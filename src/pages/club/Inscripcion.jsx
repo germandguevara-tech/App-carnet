@@ -56,20 +56,20 @@ async function leerCodigoDeImagen(file) {
     reader.onload = async (e) => {
       try {
         const base64 = e.target.result.split(",")[1];
-        const formData = new FormData();
-        formData.append("image", file);
-        const response = await fetch("https://api4ai.cloud/api/v1/results?demo=true", {
+        const mimeType = file.type;
+        const response = await fetch(import.meta.env.VITE_APPS_SCRIPT_URL, {
           method: "POST",
-          headers: { "Accept": "application/json" },
-          body: formData
+          body: JSON.stringify({ action:"leerDNI", base64, mimeType })
         });
         const data = await response.json();
-        console.log("Respuesta API4AI:", JSON.stringify(data));
-        const text = data?.results?.[0]?.entities?.[0]?.objects?.[0]?.entities?.[0]?.text;
-        if (text) resolve(text);
-        else resolve(null);
+        console.log("Respuesta Apps Script:", data);
+        if (data.ok && data.texto) {
+          resolve(data.texto);
+        } else {
+          resolve(null);
+        }
       } catch(e) {
-        console.log("Error API:", e.message);
+        console.log("Error:", e.message);
         resolve(null);
       }
     };
