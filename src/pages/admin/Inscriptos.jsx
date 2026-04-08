@@ -125,29 +125,30 @@ export default function Inscriptos() {
         </div>
       )}
 
-      <div style={{ display:"flex", gap:12, marginBottom:"1rem", flexWrap:"wrap" }}>
-        <select style={s.select} value={torneoFiltro} onChange={e => setTorneoFiltro(e.target.value)}>
+      <div style={{ display:"flex", gap:8, marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
+        <select style={{ ...s.select, flex:2, minWidth:160 }} value={torneoFiltro} onChange={e => setTorneoFiltro(e.target.value)}>
           {torneos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
         </select>
-        <select style={s.select} value={clubFiltro} onChange={e => setClubFiltro(e.target.value)}>
+        <select style={{ ...s.select, flex:1, minWidth:120 }} value={clubFiltro} onChange={e => setClubFiltro(e.target.value)}>
           <option value="">Todos los clubes</option>
           {clubes.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
         </select>
-        <select style={s.select} value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
+        <select style={{ ...s.select, flex:1, minWidth:110 }} value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
           <option value="">Todos</option>
           <option value="pendiente">Pendiente</option>
           <option value="habilitado">Habilitado</option>
           <option value="rechazado">Rechazado</option>
           <option value="baja_solicitada">Baja solicitada</option>
           <option value="inactivo">Inactivo</option>
+          <option value="reactivacion_solicitada">Reactivación</option>
         </select>
-        <select style={s.select} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
-          <option value="">Todas las categorías</option>
+        <select style={{ ...s.select, flex:1, minWidth:110 }} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
+          <option value="">Todas las cat.</option>
           {categorias.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select style={s.select} value={orden} onChange={e => setOrden(e.target.value)}>
-          <option value="desc">Más recientes primero</option>
-          <option value="asc">Más antiguos primero</option>
+        <select style={{ ...s.select, flex:1, minWidth:130 }} value={orden} onChange={e => setOrden(e.target.value)}>
+          <option value="desc">Más recientes</option>
+          <option value="asc">Más antiguos</option>
         </select>
       </div>
 
@@ -280,6 +281,18 @@ export default function Inscriptos() {
                 <div style={{ display:"flex", gap:8 }}>
                   <button style={s.btnSm("#1a6e4a")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "habilitado")}>Denegar baja</button>
                   <button style={s.btnSm("#8a9eaa")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "inactivo")}>Confirmar baja</button>
+                </div>
+              )}
+              {jugadorSeleccionado.estado === "inactivo" && (
+                <div style={{ display:"flex", gap:8 }}>
+                  <button style={s.btnSm("#1a6e4a")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "habilitado")}>✓ Reactivar</button>
+                  <button style={s.btnSm("#c9a84c")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "pendiente")}>Volver a pendiente</button>
+                </div>
+              )}
+              {jugadorSeleccionado.estado === "reactivacion_solicitada" && (
+                <div style={{ display:"flex", gap:8 }}>
+                  <button style={s.btnSm("#1a6e4a")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "habilitado")}>✓ Aprobar reactivación</button>
+                  <button style={s.btnSm("#c0392b")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "inactivo")}>✕ Rechazar reactivación</button>
                 </div>
               )}
             </div>

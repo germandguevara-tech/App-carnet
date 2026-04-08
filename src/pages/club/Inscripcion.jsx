@@ -182,9 +182,13 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
         where("clubId", "==", userData.clubId)
       ));
       if (!snapDni.empty) {
-        setError("Ya existe un jugador con ese DNI inscripto en este club");
-        setLoading(false);
-        return;
+        const jugadorExistente = snapDni.docs[0].data();
+        const estadosActivos = ["pendiente", "habilitado", "baja_solicitada"];
+        if (estadosActivos.includes(jugadorExistente.estado)) {
+          setError("Ya existe un jugador con ese DNI inscripto en este club");
+          setLoading(false);
+          return;
+        }
       }
       const torneoNombre = clubData?.torneoNombre || "Torneo";
       const clubNombre = clubData?.nombre || "Club";

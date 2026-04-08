@@ -11,12 +11,13 @@ const ESTADO_INFO = {
   inactivo: { bg:"#f5f0e8", color:"#444", texto:"🚫 Inactivo" },
 };
 
-export default function MisJugadores({ userData, onVolver, onReinscribir }) {
+export default function MisJugadores({ userData, clubData, onVolver, onReinscribir }) {
   const [jugadores, setJugadores] = useState([]);
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
+  const inscripcionActiva = clubData?.habilitado !== false;
 
   useEffect(() => { cargarJugadores(); }, [userData]);
 
@@ -71,6 +72,12 @@ export default function MisJugadores({ userData, onVolver, onReinscribir }) {
         </div>
       </div>
 
+      {!inscripcionActiva && (
+        <div style={{ background:"#fdecea", border:"1.5px solid #c0392b", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#c0392b", marginBottom:"1rem" }}>
+          🔒 La inscripción está cerrada. No podés realizar modificaciones.
+        </div>
+      )}
+
       {loading && <div style={{ textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</div>}
       {!loading && jugadoresFiltrados.length === 0 && (
         <div style={{ textAlign:"center", color:"#8a9eaa", padding:"2rem", background:"white", borderRadius:12, border:"1px solid #ede5d5" }}>
@@ -100,7 +107,7 @@ export default function MisJugadores({ userData, onVolver, onReinscribir }) {
                 <span style={{ background:estado.bg, color:estado.color, borderRadius:8, padding:"4px 10px", fontSize:11, fontWeight:600, whiteSpace:"nowrap" }}>
                   {estado.texto}
                 </span>
-                {j.estado === "rechazado" && (
+                {j.estado === "rechazado" && inscripcionActiva && (
                   <button
                     onClick={() => onReinscribir(j)}
                     style={{ background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}
@@ -108,12 +115,20 @@ export default function MisJugadores({ userData, onVolver, onReinscribir }) {
                     🔄 Reinscribir
                   </button>
                 )}
-                {j.estado === "habilitado" && (
+                {j.estado === "habilitado" && inscripcionActiva && (
                   <button
                     onClick={() => solicitarBaja(j.id)}
                     style={{ background:"none", border:"1px solid #c0392b", color:"#c0392b", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}
                   >
                     Solicitar baja
+                  </button>
+                )}
+                {j.estado === "inactivo" && inscripcionActiva && (
+                  <button
+                    onClick={() => updateDoc(doc(db, "jugadores_carnet", j.id), { estado:"reactivacion_solicitada" }).then(cargarJugadores)}
+                    style={{ background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}
+                  >
+                    🔄 Solicitar reactivación
                   </button>
                 )}
               </div>
