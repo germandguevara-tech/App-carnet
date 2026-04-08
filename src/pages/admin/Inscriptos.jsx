@@ -35,13 +35,17 @@ export default function Inscriptos() {
   const [loading, setLoading] = useState(false);
   const [jugadorSeleccionado, setJugadorSeleccionado] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState(MOTIVOS_RECHAZO[0]);
+  const [editando, setEditando] = useState(false);
+  const [datosEdit, setDatosEdit] = useState({});
   const [duplicados, setDuplicados] = useState([]);
   const [orden, setOrden] = useState("desc");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [categorias, setCategorias] = useState([]);
+  const [seleccionados, setSeleccionados] = useState([]);
 
   useEffect(() => { cargarFiltros(); }, []);
   useEffect(() => { if(torneoFiltro) cargarJugadores(); }, [torneoFiltro, clubFiltro, estadoFiltro, orden, categoriaFiltro]);
+  useEffect(() => { setSeleccionados([]); }, [torneoFiltro, clubFiltro, estadoFiltro, categoriaFiltro]);
 
   async function cargarFiltros() {
     const snapT = await getDocs(collection(db, "torneos_carnet"));
@@ -97,12 +101,39 @@ export default function Inscriptos() {
     return clubes.find(c => c.uid === uid)?.nombre || "—";
   }
 
+  async function guardarEdicion() {
+    await updateDoc(doc(db, "jugadores_carnet", jugadorSeleccionado.id), {
+      apellido: datosEdit.apellido,
+      nombre: datosEdit.nombre,
+      dni: datosEdit.dni,
+      fechaNacimiento: datosEdit.fechaNacimiento,
+      categoria: datosEdit.categoria,
+    });
+    setEditando(false);
+    setJugadorSeleccionado(prev => ({ ...prev, ...datosEdit }));
+    await cargarJugadores();
+  }
+
+  function toggleSeleccion(id) {
+    setSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function seleccionarTodos() {
+    if (seleccionados.length === jugadores.length) {
+      setSeleccionados([]);
+    } else {
+      setSeleccionados(jugadores.map(j => j.id));
+    }
+  }
+
   async function handleDescargarExcel() {
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), orderBy("creadoEn", "desc")));
     let lista = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     if (torneoFiltro) lista = lista.filter(j => j.torneoId === torneoFiltro);
     if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
     if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
+    if (categoriaFiltro) lista = lista.filter(j => j.categoria === categoriaFiltro);
+    if (seleccionados.length > 0) lista = lista.filter(j => seleccionados.includes(j.id));
     const listaConNombres = lista.map(j => ({
       ...j,
       clubNombre: clubes.find(c => c.uid === j.clubId)?.nombre || "",
@@ -116,7 +147,17 @@ export default function Inscriptos() {
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.5rem" }}>
         <div style={s.titulo}>👥 Inscriptos</div>
-        <button style={{ ...s.btn, background:"#1a6e4a" }} onClick={handleDescargarExcel}>📥 Descargar Excel</button>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          {seleccionados.length > 0 && (
+            <span style={{ fontSize:13, color:"#8a9eaa" }}>{seleccionados.length} seleccionado{seleccionados.length > 1 ? "s" : ""}</span>
+          )}
+          <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={seleccionarTodos}>
+            {seleccionados.length === jugadores.length && jugadores.length > 0 ? "Deseleccionar todos" : "Seleccionar todos"}
+          </button>
+          <button style={{ ...s.btn, background:"#1a6e4a" }} onClick={handleDescargarExcel}>
+            📥 {seleccionados.length > 0 ? `Descargar (${seleccionados.length})` : "Descargar Excel"}
+          </button>
+        </div>
       </div>
 
       {duplicados.length > 0 && (
@@ -156,6 +197,9 @@ export default function Inscriptos() {
         <table style={{ width:"100%", borderCollapse:"collapse" }}>
           <thead style={{ background:"#f5f0e8" }}>
             <tr>
+              <th style={{ ...s.th, width:40, textAlign:"center" }}>
+                <input type="checkbox" checked={seleccionados.length === jugadores.length && jugadores.length > 0} onChange={seleccionarTodos} />
+              </th>
               <th style={s.th}>Foto</th>
               <th style={s.th}>Apellido y nombre</th>
               <th style={s.th}>DNI</th>
@@ -167,12 +211,15 @@ export default function Inscriptos() {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={8} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</td></tr>}
-            {!loading && jugadores.length === 0 && <tr><td colSpan={8} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</td></tr>}
+            {loading && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</td></tr>}
+            {!loading && jugadores.length === 0 && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</td></tr>}
             {jugadores.map(j => (
               <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer" }}
                 onMouseEnter={e => e.currentTarget.style.background="#f9f7f4"}
                 onMouseLeave={e => e.currentTarget.style.background="white"}>
+                <td style={{ ...s.td, textAlign:"center" }} onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccion(j.id)} />
+                </td>
                 <td style={s.td}>
                   <div style={{ width:32, height:43, borderRadius:4, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     {j.fotoCarnetUrl ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:14 }}>👤</span>}
@@ -224,25 +271,66 @@ export default function Inscriptos() {
               </div>
 
               <div style={{ flex:1, minWidth:200 }}>
-                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                  {[
-                    { label:"DNI", val:jugadorSeleccionado.dni },
-                    { label:"Fecha nac.", val: jugadorSeleccionado.fechaNacimiento ? jugadorSeleccionado.fechaNacimiento.split("-").reverse().join("/") : "—" },
-                    { label:"Categoría", val:jugadorSeleccionado.categoria },
-                    { label:"Club", val:getNombreClub(jugadorSeleccionado.clubId) },
-                    { label:"Inscripto", val: jugadorSeleccionado.creadoEn?.toDate ? jugadorSeleccionado.creadoEn.toDate().toLocaleDateString("es-AR") : "—" },
-                  ].map(d => (
-                    <div key={d.label} style={{ display:"flex", gap:8, fontSize:13 }}>
-                      <span style={{ color:"#8a9eaa", width:80 }}>{d.label}</span>
-                      <span style={{ fontWeight:600, color:"#1e3a4a" }}>{d.val}</span>
-                    </div>
-                  ))}
-                  {jugadorSeleccionado.motivoRechazo && (
-                    <div style={{ background:"#fdecea", borderRadius:6, padding:"6px 10px", fontSize:12, color:"#c0392b", marginTop:4 }}>
-                      Motivo rechazo: {jugadorSeleccionado.motivoRechazo}
-                    </div>
-                  )}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <div style={{ fontSize:11, color:"#8a9eaa", fontWeight:600, textTransform:"uppercase" }}>Datos</div>
+                  <button onClick={() => { setEditando(!editando); setDatosEdit({ apellido:jugadorSeleccionado.apellido, nombre:jugadorSeleccionado.nombre, dni:jugadorSeleccionado.dni, fechaNacimiento:jugadorSeleccionado.fechaNacimiento, categoria:jugadorSeleccionado.categoria }); }}
+                    style={{ background:"none", border:"1px solid #c9a84c", borderRadius:6, padding:"3px 10px", fontSize:11, color:"#c9a84c", cursor:"pointer" }}>
+                    {editando ? "Cancelar" : "✏️ Editar"}
+                  </button>
                 </div>
+                {!editando ? (
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {[
+                      { label:"Apellido", val:jugadorSeleccionado.apellido },
+                      { label:"Nombre", val:jugadorSeleccionado.nombre },
+                      { label:"DNI", val:jugadorSeleccionado.dni },
+                      { label:"Fecha nac.", val: jugadorSeleccionado.fechaNacimiento ? jugadorSeleccionado.fechaNacimiento.split("-").reverse().join("/") : "—" },
+                      { label:"Categoría", val:jugadorSeleccionado.categoria },
+                      { label:"Club", val:getNombreClub(jugadorSeleccionado.clubId) },
+                      { label:"Inscripto", val: jugadorSeleccionado.creadoEn?.toDate ? jugadorSeleccionado.creadoEn.toDate().toLocaleDateString("es-AR") : "—" },
+                    ].map(d => (
+                      <div key={d.label} style={{ display:"flex", gap:8, fontSize:13 }}>
+                        <span style={{ color:"#8a9eaa", width:80 }}>{d.label}</span>
+                        <span style={{ fontWeight:600, color:"#1e3a4a" }}>{d.val}</span>
+                      </div>
+                    ))}
+                    {jugadorSeleccionado.motivoRechazo && (
+                      <div style={{ background:"#fdecea", borderRadius:6, padding:"6px 10px", fontSize:12, color:"#c0392b", marginTop:4 }}>
+                        Motivo rechazo: {jugadorSeleccionado.motivoRechazo}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {[
+                      { label:"Apellido", key:"apellido" },
+                      { label:"Nombre", key:"nombre" },
+                      { label:"DNI", key:"dni" },
+                    ].map(d => (
+                      <div key={d.key}>
+                        <label style={{ fontSize:11, color:"#8a9eaa", display:"block", marginBottom:2 }}>{d.label}</label>
+                        <input style={{ width:"100%", padding:"7px 10px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", boxSizing:"border-box" }}
+                          value={datosEdit[d.key] || ""} onChange={e => setDatosEdit({...datosEdit, [d.key]: e.target.value})} />
+                      </div>
+                    ))}
+                    <div>
+                      <label style={{ fontSize:11, color:"#8a9eaa", display:"block", marginBottom:2 }}>Fecha nac.</label>
+                      <input type="date" style={{ width:"100%", padding:"7px 10px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", boxSizing:"border-box" }}
+                        value={datosEdit.fechaNacimiento || ""} onChange={e => setDatosEdit({...datosEdit, fechaNacimiento: e.target.value})} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:11, color:"#8a9eaa", display:"block", marginBottom:2 }}>Categoría</label>
+                      <select style={{ width:"100%", padding:"7px 10px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", background:"white" }}
+                        value={datosEdit.categoria || ""} onChange={e => setDatosEdit({...datosEdit, categoria: e.target.value})}>
+                        <option value="">— Seleccioná —</option>
+                        {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <button onClick={guardarEdicion} style={{ background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"8px 16px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                      Guardar cambios
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
