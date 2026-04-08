@@ -56,18 +56,18 @@ async function leerCodigoDeImagen(file) {
     reader.onload = async (e) => {
       try {
         const base64 = e.target.result.split(",")[1];
-        const response = await fetch("https://zxing.org/w/decode", {
+        const formData = new FormData();
+        formData.append("image", file);
+        const response = await fetch("https://api4ai.cloud/api/v1/results?demo=true", {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `f=json&u=data:image/jpeg;base64,${encodeURIComponent(base64)}`
+          headers: { "Accept": "application/json" },
+          body: formData
         });
         const data = await response.json();
-        console.log("Respuesta API:", data);
-        if (data.text) {
-          resolve(data.text);
-        } else {
-          resolve(null);
-        }
+        console.log("Respuesta API4AI:", JSON.stringify(data));
+        const text = data?.results?.[0]?.entities?.[0]?.objects?.[0]?.entities?.[0]?.text;
+        if (text) resolve(text);
+        else resolve(null);
       } catch(e) {
         console.log("Error API:", e.message);
         resolve(null);
