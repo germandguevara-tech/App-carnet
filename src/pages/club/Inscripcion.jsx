@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { subirFotoADrive, generarNombreCarnet, generarNombreDniFrente, generarNombreDniDorso } from "../../utils/drive";
-import { BrowserMultiFormatReader } from "@zxing/library";
 
 const estilos = {
   btn: { width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:12, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer" },
@@ -53,41 +52,28 @@ function parsearDNI(texto) {
 
 async function leerCodigoDeImagen(file) {
   return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = async () => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
       try {
-        const MAX = 1200;
-        const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth * scale;
-        canvas.height = img.naturalHeight * scale;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const codeReader = new BrowserMultiFormatReader();
-        const imageData = canvas.toDataURL("image/jpeg", 0.9);
-        const imgEl = new Image();
-        imgEl.onload = async () => {
-          try {
-            const result = await codeReader.decodeFromImageElement(imgEl);
-            URL.revokeObjectURL(url);
-            console.log("Código leído:", result?.getText());
-            resolve(result?.getText() || null);
-          } catch(e) {
-            console.log("Error leyendo código:", e.message);
-            URL.revokeObjectURL(url);
-            resolve(null);
-          }
-        };
-        imgEl.src = imageData;
+        const base64 = e.target.result.split(",")[1];
+        const response = await fetch("https://zxing.org/w/decode", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `f=json&u=data:image/jpeg;base64,${encodeURIComponent(base64)}`
+        });
+        const data = await response.json();
+        console.log("Respuesta API:", data);
+        if (data.text) {
+          resolve(data.text);
+        } else {
+          resolve(null);
+        }
       } catch(e) {
-        console.log("Error general:", e.message);
-        URL.revokeObjectURL(url);
+        console.log("Error API:", e.message);
         resolve(null);
       }
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
-    img.src = url;
+    reader.readAsDataURL(file);
   });
 }
 
