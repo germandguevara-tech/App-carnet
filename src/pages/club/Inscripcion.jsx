@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { subirFotoADrive, generarNombreCarnet, generarNombreDniFrente, generarNombreDniDorso } from "../../utils/drive";
+import { BrowserMultiFormatReader } from "@zxing/library";
 
 const estilos = {
   btn: { width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:12, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer" },
@@ -63,22 +64,24 @@ async function leerCodigoDeImagen(file) {
         canvas.height = img.naturalHeight * scale;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } = await import("@zxing/library");
-        const hints = new Map();
-        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-          BarcodeFormat.PDF_417,
-          BarcodeFormat.QR_CODE,
-          BarcodeFormat.DATA_MATRIX,
-          BarcodeFormat.CODE_128,
-        ]);
-        hints.set(DecodeHintType.TRY_HARDER, true);
-        const codeReader = new BrowserMultiFormatReader(hints);
-        const result = await codeReader.decodeFromCanvas(canvas);
-        URL.revokeObjectURL(url);
-        console.log("Código leído:", result?.getText());
-        resolve(result?.getText() || null);
+        const codeReader = new BrowserMultiFormatReader();
+        const imageData = canvas.toDataURL("image/jpeg", 0.9);
+        const imgEl = new Image();
+        imgEl.onload = async () => {
+          try {
+            const result = await codeReader.decodeFromImageElement(imgEl);
+            URL.revokeObjectURL(url);
+            console.log("Código leído:", result?.getText());
+            resolve(result?.getText() || null);
+          } catch(e) {
+            console.log("Error leyendo código:", e.message);
+            URL.revokeObjectURL(url);
+            resolve(null);
+          }
+        };
+        imgEl.src = imageData;
       } catch(e) {
-        console.log("Error leyendo código:", e.message);
+        console.log("Error general:", e.message);
         URL.revokeObjectURL(url);
         resolve(null);
       }
