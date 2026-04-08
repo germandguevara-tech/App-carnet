@@ -9,12 +9,25 @@ export default function Carnets({ userData, onVolver }) {
   const [categorias, setCategorias] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [loading, setLoading] = useState(true);
+  const [carnetsDesactivados, setCarnetsDesactivados] = useState(false);
 
   useEffect(() => { cargarJugadores(); }, [userData]);
 
   async function cargarJugadores() {
     if (!userData?.clubId) return;
     setLoading(true);
+    const snapClub = await getDocs(query(collection(db, "clubes_carnet"), where("uid", "==", userData.clubId)));
+    if (!snapClub.empty) {
+      const clubInfo = snapClub.docs[0].data();
+      if (clubInfo.carnetsActivos === false) {
+        setJugadores([]);
+        setCategorias([]);
+        setLoading(false);
+        setCarnetsDesactivados(true);
+        return;
+      }
+    }
+    setCarnetsDesactivados(false);
     const snap = await getDocs(query(
       collection(db, "jugadores_carnet"),
       where("clubId", "==", userData.clubId),
@@ -40,6 +53,14 @@ export default function Carnets({ userData, onVolver }) {
         <div style={{ color:"white", fontWeight:600, fontSize:16 }}>Carnets digitales</div>
       </div>
 
+      {carnetsDesactivados && (
+        <div style={{ margin:"1rem 1.25rem", background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"2rem", textAlign:"center" }}>
+          <div style={{ fontSize:36, marginBottom:"0.75rem" }}>🚫</div>
+          <div style={{ color:"white", fontWeight:600, fontSize:15, marginBottom:6 }}>Carnets desactivados</div>
+          <div style={{ color:"rgba(255,255,255,0.6)", fontSize:13 }}>Los carnets digitales no están disponibles para este club en este momento.</div>
+        </div>
+      )}
+
       <div style={{ padding:"0 1.25rem 1rem", overflowX:"auto", display:"flex", gap:8, scrollbarWidth:"none" }}>
         {categorias.map(cat => (
           <button key={cat} onClick={() => setCategoriaFiltro(cat)} style={{
@@ -56,6 +77,11 @@ export default function Carnets({ userData, onVolver }) {
 
       {loading && (
         <div style={{ textAlign:"center", color:"rgba(255,255,255,0.5)", padding:"3rem" }}>Cargando...</div>
+      )}
+      {carnetsDesactivados && (
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,0.4)", padding:"3rem", fontSize:14 }}>
+          Los carnets digitales están desactivados para este club.
+        </div>
       )}
 
       {!loading && jugadoresFiltrados.length === 0 && (

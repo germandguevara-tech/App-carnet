@@ -210,13 +210,14 @@ export default function Clubes() {
               <th style={s.th}>Torneo</th>
               <th style={{ ...s.th, textAlign:"center" }}>Inscripción</th>
               <th style={{ ...s.th, textAlign:"center" }}>Galería</th>
+              <th style={{ ...s.th, textAlign:"center" }}>Carnets</th>
               <th style={{ ...s.th, textAlign:"center" }}>Usuarios</th>
               <th style={{ ...s.th, textAlign:"center" }}>WhatsApp</th>
             </tr>
           </thead>
           <tbody>
             {clubesFiltrados.length === 0 && (
-              <tr><td colSpan={6} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No se encontraron clubes.</td></tr>
+              <tr><td colSpan={7} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No se encontraron clubes.</td></tr>
             )}
             {clubesFiltrados.map(c => (
               <tr key={c.id}>
@@ -230,6 +231,11 @@ export default function Clubes() {
                 <td style={{ ...s.td, textAlign:"center" }}>
                   <div style={{ display:"flex", justifyContent:"center" }}>
                     <Switch value={c.permitirGaleria} onChange={() => toggle(c.id, "permitirGaleria", c.permitirGaleria)} />
+                  </div>
+                </td>
+                <td style={{ ...s.td, textAlign:"center" }}>
+                  <div style={{ display:"flex", justifyContent:"center" }}>
+                    <Switch value={c.carnetsActivos !== false} onChange={() => toggle(c.id, "carnetsActivos", c.carnetsActivos !== false)} />
                   </div>
                 </td>
                 <td style={{ ...s.td, textAlign:"center" }}>
