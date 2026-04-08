@@ -7,6 +7,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import Inscripcion from "./Inscripcion";
 import MisJugadores from "./MisJugadores";
 import Carnets from "./Carnets";
+import Verificador from "./Verificador";
 
 export default function ClubDashboard() {
   const [tab, setTab] = useState("inicio");
@@ -107,6 +108,10 @@ export default function ClubDashboard() {
         {tab === "carnets" && (
           <Carnets userData={userData} onVolver={() => setTab("inicio")} />
         )}
+
+        {tab === "verificar" && (
+          <Verificador onVolver={() => setTab("inicio")} />
+        )}
       </div>
 
       {tab !== "carnets" && (
@@ -116,6 +121,7 @@ export default function ClubDashboard() {
             { id:"inscripcion", icon:"➕", label:"Inscribir" },
             { id:"jugadores", icon:"👥", label:"Jugadores" },
             { id:"carnets", icon:"🪪", label:"Carnets" },
+            { id:"verificar", icon:"🔍", label:"Verificar" },
           ].map(item => (
             <button key={item.id} onClick={() => { if(item.id === "inscripcion") setJugadorAReinscribir(null); setTab(item.id); }} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", padding:4 }}>
               <span style={{ fontSize:20, opacity: tab === item.id ? 1 : 0.4 }}>{item.icon}</span>
