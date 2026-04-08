@@ -10,6 +10,7 @@ import Carnets from "./Carnets";
 
 export default function ClubDashboard() {
   const [tab, setTab] = useState("inicio");
+  const [jugadorAReinscribir, setJugadorAReinscribir] = useState(null);
   const { userData } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ total:0, pendientes:0, habilitados:0, rechazados:0 });
@@ -34,6 +35,11 @@ export default function ClubDashboard() {
   async function handleLogout() {
     await signOut(auth);
     navigate("/login");
+  }
+
+  function handleReinscribir(jugador) {
+    setJugadorAReinscribir(jugador);
+    setTab("inscripcion");
   }
 
   return (
@@ -68,15 +74,12 @@ export default function ClubDashboard() {
                 </div>
               ))}
             </div>
-
-            <button onClick={() => setTab("inscripcion")} style={{ width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:14, padding:"16px", fontSize:16, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+            <button onClick={() => { setJugadorAReinscribir(null); setTab("inscripcion"); }} style={{ width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:14, padding:"16px", fontSize:16, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               <span style={{ fontSize:20 }}>+</span> Inscribir jugador
             </button>
-
             <button onClick={() => setTab("jugadores")} style={{ width:"100%", background:"white", color:"#1e3a4a", border:"1.5px solid #1e3a4a", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               👥 Ver mis jugadores
             </button>
-
             <button onClick={() => setTab("carnets")} style={{ width:"100%", background:"#c9a84c", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               🪪 Carnets digitales
             </button>
@@ -84,11 +87,21 @@ export default function ClubDashboard() {
         )}
 
         {tab === "inscripcion" && (
-          <Inscripcion clubData={clubData} userData={userData} onVolver={() => { setTab("inicio"); cargarDatos(); }} />
+          <Inscripcion
+            clubData={clubData}
+            userData={userData}
+            jugadorAReinscribir={jugadorAReinscribir}
+            onVolver={() => { setTab("inicio"); setJugadorAReinscribir(null); cargarDatos(); }}
+          />
         )}
 
         {tab === "jugadores" && (
-          <MisJugadores clubData={clubData} userData={userData} onVolver={() => setTab("inicio")} />
+          <MisJugadores
+            clubData={clubData}
+            userData={userData}
+            onVolver={() => setTab("inicio")}
+            onReinscribir={handleReinscribir}
+          />
         )}
 
         {tab === "carnets" && (
@@ -104,7 +117,7 @@ export default function ClubDashboard() {
             { id:"jugadores", icon:"👥", label:"Jugadores" },
             { id:"carnets", icon:"🪪", label:"Carnets" },
           ].map(item => (
-            <button key={item.id} onClick={() => setTab(item.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", padding:4 }}>
+            <button key={item.id} onClick={() => { if(item.id === "inscripcion") setJugadorAReinscribir(null); setTab(item.id); }} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", padding:4 }}>
               <span style={{ fontSize:20, opacity: tab === item.id ? 1 : 0.4 }}>{item.icon}</span>
               <span style={{ fontSize:10, color: tab === item.id ? "#1e3a4a" : "#8a9eaa", fontWeight: tab === item.id ? 600 : 400 }}>{item.label}</span>
             </button>

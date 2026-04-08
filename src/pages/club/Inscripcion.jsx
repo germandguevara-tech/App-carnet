@@ -45,13 +45,21 @@ function parsearDNI(texto) {
     }
     if (linea.includes("nacimiento") || linea.includes("birth")) {
       const siguienteLimpio = siguiente.replace(/\//g, " ").replace(/\s+/g, " ").trim();
-      const partesFecha = siguienteLimpio.match(/(\d{1,2})\s+([A-Z]{3})\s+[A-Z]{3}\s+(\d{4})/);
-      if (partesFecha) {
-        const meses = { ENE:"01", JAN:"01", FEB:"02", MAR:"03", ABR:"04", APR:"04", MAY:"05", JUN:"06", JUL:"07", AGO:"08", AUG:"08", SEP:"09", OCT:"10", NOV:"11", DIC:"12", DEC:"12" };
-        const dia = partesFecha[1].padStart(2, "0");
-        const mes = meses[partesFecha[2]] || "01";
-        const anio = partesFecha[3];
+      const formatoPuntos = siguienteLimpio.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      if (formatoPuntos) {
+        const dia = formatoPuntos[1].padStart(2, "0");
+        const mes = formatoPuntos[2].padStart(2, "0");
+        const anio = formatoPuntos[3];
         fechaNacimiento = `${anio}-${mes}-${dia}`;
+      } else {
+        const partesFecha = siguienteLimpio.match(/(\d{1,2})\s+([A-Z]{3})\s+[A-Z]{3}\s+(\d{4})/);
+        if (partesFecha) {
+          const meses = { ENE:"01", JAN:"01", FEB:"02", MAR:"03", ABR:"04", APR:"04", MAY:"05", JUN:"06", JUL:"07", AGO:"08", AUG:"08", SEP:"09", OCT:"10", NOV:"11", DIC:"12", DEC:"12" };
+          const dia = partesFecha[1].padStart(2, "0");
+          const mes = meses[partesFecha[2]] || "01";
+          const anio = partesFecha[3];
+          fechaNacimiento = `${anio}-${mes}-${dia}`;
+        }
       }
     }
   }
@@ -90,7 +98,7 @@ async function leerCodigoDeImagen(file) {
   });
 }
 
-export default function Inscripcion({ clubData, userData, onVolver }) {
+export default function Inscripcion({ clubData, userData, onVolver, jugadorAReinscribir }) {
   const [paso, setPaso] = useState(1);
   const [datos, setDatos] = useState({ apellido:"", nombre:"", dni:"", fechaNacimiento:"", categoria:"" });
   const [fotoFrente, setFotoFrente] = useState(null);
@@ -104,6 +112,18 @@ export default function Inscripcion({ clubData, userData, onVolver }) {
   const permitirGaleria = clubData?.permitirGaleria || false;
 
   useEffect(() => { cargarCategorias(); }, [clubData]);
+  useEffect(() => {
+    if (jugadorAReinscribir) {
+      setDatos({
+        apellido: jugadorAReinscribir.apellido || "",
+        nombre: jugadorAReinscribir.nombre || "",
+        dni: jugadorAReinscribir.dni || "",
+        fechaNacimiento: jugadorAReinscribir.fechaNacimiento || "",
+        categoria: jugadorAReinscribir.categoria || ""
+      });
+      setPaso(2);
+    }
+  }, [jugadorAReinscribir]);
 
   async function cargarCategorias() {
     if (!clubData?.torneoId) return;
@@ -156,6 +176,16 @@ export default function Inscripcion({ clubData, userData, onVolver }) {
     if (!fotoCarnet) { setError("Falta la foto carnet"); return; }
     setLoading(true); setError("");
     try {
+      const snapDni = await getDocs(query(
+        collection(db, "jugadores_carnet"),
+        where("dni", "==", datos.dni),
+        where("clubId", "==", userData.clubId)
+      ));
+      if (!snapDni.empty) {
+        setError("Ya existe un jugador con ese DNI inscripto en este club");
+        setLoading(false);
+        return;
+      }
       const torneoNombre = clubData?.torneoNombre || "Torneo";
       const clubNombre = clubData?.nombre || "Club";
       let urlCarnet = "", urlDniFrente = "", urlDniDorso = "";
