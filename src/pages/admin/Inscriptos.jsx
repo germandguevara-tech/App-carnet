@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase";
-import { collection, getDocs, doc, updateDoc, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, query, orderBy } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
 import { descargarExcel } from "../../utils/excel";
 
@@ -127,6 +127,8 @@ export default function Inscriptos() {
   }
 
   async function handleDescargarExcel() {
+    const configSnap = await getDoc(doc(db, "config_carnet", "general"));
+    const rutaBase = configSnap.exists() ? configSnap.data().rutaBase : "";
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), orderBy("creadoEn", "desc")));
     let lista = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     if (torneoFiltro) lista = lista.filter(j => j.torneoId === torneoFiltro);
@@ -134,11 +136,14 @@ export default function Inscriptos() {
     if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
     if (categoriaFiltro) lista = lista.filter(j => j.categoria === categoriaFiltro);
     if (seleccionados.length > 0) lista = lista.filter(j => seleccionados.includes(j.id));
-    const listaConNombres = lista.map(j => ({
-      ...j,
-      clubNombre: clubes.find(c => c.uid === j.clubId)?.nombre || "",
-      torneoNombre: torneos.find(t => t.id === j.torneoId)?.nombre || "",
-    }));
+    const listaConNombres = lista.map(j => {
+      const clubNombre = clubes.find(c => c.uid === j.clubId)?.nombre || "";
+      const torneoNombre = torneos.find(t => t.id === j.torneoId)?.nombre || "";
+      const rutaCarnet = rutaBase ? `${rutaBase}\\${torneoNombre}\\${clubNombre}\\${j.categoria}-${j.apellido} ${j.nombre}.jpg` : "";
+      const rutaDniFrente = rutaBase ? `${rutaBase}\\${torneoNombre}\\${clubNombre}\\DNI-F-${j.apellido} ${j.nombre}-${j.dni}.jpg` : "";
+      const rutaDniDorso = rutaBase ? `${rutaBase}\\${torneoNombre}\\${clubNombre}\\DNI-D-${j.apellido} ${j.nombre}-${j.dni}.jpg` : "";
+      return { ...j, clubNombre, torneoNombre, rutaCarnet, rutaDniFrente, rutaDniDorso };
+    });
     const torneoNombre = torneos.find(t => t.id === torneoFiltro)?.nombre || "todos";
     descargarExcel(listaConNombres, `Inscriptos-${torneoNombre}`);
   }
