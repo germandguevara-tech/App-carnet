@@ -39,11 +39,13 @@ function parsearDNI(texto) {
       nombre = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
     }
     if (linea.includes("Documento") || linea.includes("Document")) {
-      const dniMatch = siguiente.match(/\d{7,8}/);
+      const dniLimpio = siguiente.replace(/\./g, "").replace(/\s/g, "");
+      const dniMatch = dniLimpio.match(/\d{7,8}/);
       if (dniMatch) dni = dniMatch[0].trim();
     }
     if (linea.includes("nacimiento") || linea.includes("birth")) {
-      const partesFecha = siguiente.match(/(\d{1,2})\s+([A-Z]{3})\s+[A-Z]{3}\s+(\d{4})/);
+      const siguienteLimpio = siguiente.replace(/\//g, " ").replace(/\s+/g, " ").trim();
+      const partesFecha = siguienteLimpio.match(/(\d{1,2})\s+([A-Z]{3})\s+[A-Z]{3}\s+(\d{4})/);
       if (partesFecha) {
         const meses = { ENE:"01", JAN:"01", FEB:"02", MAR:"03", ABR:"04", APR:"04", MAY:"05", JUN:"06", JUL:"07", AGO:"08", AUG:"08", SEP:"09", OCT:"10", NOV:"11", DIC:"12", DEC:"12" };
         const dia = partesFecha[1].padStart(2, "0");
