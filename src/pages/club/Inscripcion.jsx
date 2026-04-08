@@ -56,17 +56,29 @@ async function leerCodigoDeImagen(file) {
     const url = URL.createObjectURL(file);
     img.onload = async () => {
       try {
+        const MAX = 1200;
+        const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
         const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        canvas.width = img.naturalWidth * scale;
+        canvas.height = img.naturalHeight * scale;
         const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        const { BrowserMultiFormatReader } = await import("@zxing/library");
-        const codeReader = new BrowserMultiFormatReader();
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } = await import("@zxing/library");
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          BarcodeFormat.PDF_417,
+          BarcodeFormat.QR_CODE,
+          BarcodeFormat.DATA_MATRIX,
+          BarcodeFormat.CODE_128,
+        ]);
+        hints.set(DecodeHintType.TRY_HARDER, true);
+        const codeReader = new BrowserMultiFormatReader(hints);
         const result = await codeReader.decodeFromCanvas(canvas);
         URL.revokeObjectURL(url);
+        console.log("Código leído:", result?.getText());
         resolve(result?.getText() || null);
-      } catch {
+      } catch(e) {
+        console.log("Error leyendo código:", e.message);
         URL.revokeObjectURL(url);
         resolve(null);
       }
@@ -110,12 +122,26 @@ export default function Inscripcion({ clubData, userData, onVolver }) {
     if (!fotoFrente || !fotoDorso) { setError("Tenés que subir las dos fotos del DNI"); return; }
     setError("");
     setProcesando(true);
-    let texto = null;
-    texto = await leerCodigoDeImagen(fotoFrente);
-    if (!texto) texto = await leerCodigoDeImagen(fotoDorso);
-    if (texto) {
-      const parsed = parsearDNI(texto);
-      if (parsed) setDatos(prev => ({ ...prev, ...parsed }));
+    try {
+      let texto = null;
+      console.log("Intentando leer frente...");
+      texto = await leerCodigoDeImagen(fotoFrente);
+      console.log("Resultado frente:", texto);
+      if (!texto) {
+        console.log("Intentando leer dorso...");
+        texto = await leerCodigoDeImagen(fotoDorso);
+        console.log("Resultado dorso:", texto);
+      }
+      if (texto) {
+        console.log("Texto leído:", texto);
+        const parsed = parsearDNI(texto);
+        console.log("Datos parseados:", parsed);
+        if (parsed) setDatos(prev => ({ ...prev, ...parsed }));
+      } else {
+        console.log("No se pudo leer ningún código");
+      }
+    } catch(e) {
+      console.log("Error:", e.message);
     }
     setProcesando(false);
     setPaso(2);
