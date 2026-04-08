@@ -14,6 +14,8 @@ const estilos = {
 
 function parsearDNI(texto) {
   if (!texto) return null;
+  const lineas = texto.split("\n").map(l => l.trim()).filter(Boolean);
+
   const partes = texto.split("@");
   if (partes.length >= 5) {
     return {
@@ -23,30 +25,39 @@ function parsearDNI(texto) {
       fechaNacimiento: partes[6]?.trim() || "",
     };
   }
-  const lineas = texto.split("\n").map(l => l.trim()).filter(Boolean);
+
+  let apellido = "", nombre = "", dni = "", fechaNacimiento = "";
+
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
-    if (linea.startsWith("IDARG") || linea.match(/^[A-Z]{5,}<<[A-Z<]+/)) {
-      const apellidoNombre = linea.replace(/^IDARG\d+<\d*/, "").replace(/^[A-Z0-9<]+<</, "");
-      const partesMRZ = linea.split("<<");
-      if (partesMRZ.length >= 2) {
-        const apellido = partesMRZ[0].split("<").filter(Boolean).join(" ").trim();
-        const nombre = partesMRZ[1].split("<").filter(Boolean).join(" ").trim();
-        const dniMatch = texto.match(/\d{7,8}/);
-        const fechaMatch = texto.match(/(\d{6})[MF]/);
-        let fechaNac = "";
-        if (fechaMatch) {
-          const f = fechaMatch[1];
-          const anio = parseInt(f.substring(0,2));
-          const mes = f.substring(2,4);
-          const dia = f.substring(4,6);
-          const anioCompleto = anio > 30 ? `19${f.substring(0,2)}` : `20${f.substring(0,2)}`;
-          fechaNac = `${anioCompleto}-${mes}-${dia}`;
-        }
-        return { apellido, nombre, dni: dniMatch?.[0] || "", fechaNacimiento: fechaNac };
+    const siguiente = lineas[i + 1] || "";
+
+    if (linea.includes("Apellido") || linea.includes("Surname")) {
+      apellido = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+    }
+    if (linea.includes("Nombre") && !linea.includes("Nacimiento")) {
+      nombre = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+    }
+    if (linea.includes("Documento") || linea.includes("Document")) {
+      const dniMatch = siguiente.match(/\d{7,8}/);
+      if (dniMatch) dni = dniMatch[0].trim();
+    }
+    if (linea.includes("nacimiento") || linea.includes("birth")) {
+      const partesFecha = siguiente.match(/(\d{1,2})\s+([A-Z]{3})\s+[A-Z]{3}\s+(\d{4})/);
+      if (partesFecha) {
+        const meses = { ENE:"01", JAN:"01", FEB:"02", MAR:"03", ABR:"04", APR:"04", MAY:"05", JUN:"06", JUL:"07", AGO:"08", AUG:"08", SEP:"09", OCT:"10", NOV:"11", DIC:"12", DEC:"12" };
+        const dia = partesFecha[1].padStart(2, "0");
+        const mes = meses[partesFecha[2]] || "01";
+        const anio = partesFecha[3];
+        fechaNacimiento = `${anio}-${mes}-${dia}`;
       }
     }
   }
+
+  if (apellido || nombre || dni) {
+    return { apellido, nombre, dni, fechaNacimiento };
+  }
+
   return null;
 }
 
