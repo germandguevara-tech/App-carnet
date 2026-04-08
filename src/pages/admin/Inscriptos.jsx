@@ -36,9 +36,12 @@ export default function Inscriptos() {
   const [jugadorSeleccionado, setJugadorSeleccionado] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState(MOTIVOS_RECHAZO[0]);
   const [duplicados, setDuplicados] = useState([]);
+  const [orden, setOrden] = useState("desc");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [categorias, setCategorias] = useState([]);
 
   useEffect(() => { cargarFiltros(); }, []);
-  useEffect(() => { if(torneoFiltro) cargarJugadores(); }, [torneoFiltro, clubFiltro, estadoFiltro]);
+  useEffect(() => { if(torneoFiltro) cargarJugadores(); }, [torneoFiltro, clubFiltro, estadoFiltro, orden, categoriaFiltro]);
 
   async function cargarFiltros() {
     const snapT = await getDocs(collection(db, "torneos_carnet"));
@@ -55,6 +58,10 @@ export default function Inscriptos() {
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), orderBy("creadoEn", "desc")));
     let lista = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
+    let listaTorneo = lista.filter(j => j.torneoId === torneoFiltro);
+    const cats = [...new Set(listaTorneo.map(j => j.categoria).filter(Boolean))].sort();
+    setCategorias(cats);
+
     const dniCount = {};
     lista.forEach(j => {
       if (j.torneoId === torneoFiltro) {
@@ -68,6 +75,12 @@ export default function Inscriptos() {
     if (torneoFiltro) lista = lista.filter(j => j.torneoId === torneoFiltro);
     if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
     if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
+    if (categoriaFiltro) lista = lista.filter(j => j.categoria === categoriaFiltro);
+    lista = lista.sort((a, b) => {
+      const fechaA = a.creadoEn?.toDate ? a.creadoEn.toDate() : new Date(a.creadoEn || 0);
+      const fechaB = b.creadoEn?.toDate ? b.creadoEn.toDate() : new Date(b.creadoEn || 0);
+      return orden === "desc" ? fechaB - fechaA : fechaA - fechaB;
+    });
     setJugadores(lista);
     setLoading(false);
   }
@@ -127,6 +140,14 @@ export default function Inscriptos() {
           <option value="rechazado">Rechazado</option>
           <option value="baja_solicitada">Baja solicitada</option>
           <option value="inactivo">Inactivo</option>
+        </select>
+        <select style={s.select} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
+          <option value="">Todas las categorías</option>
+          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select style={s.select} value={orden} onChange={e => setOrden(e.target.value)}>
+          <option value="desc">Más recientes primero</option>
+          <option value="asc">Más antiguos primero</option>
         </select>
       </div>
 
