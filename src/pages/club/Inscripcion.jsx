@@ -58,11 +58,17 @@ function parsearOCR(texto) {
     const siguiente = lineas[i + 1] || "";
 
     if (linea.match(/Apellido|Surname/i)) {
-      const val = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+      const val = siguiente
+        .replace(/EXTRANJERO/gi, "")
+        .replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "")
+        .trim();
       if (val.length > 1) apellido = val;
     }
     if (linea.match(/^Nombre|^Name/i) && !linea.match(/Nacimiento|birth/i)) {
-      const val = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+      const val = siguiente
+        .replace(/EXTRANJERO/gi, "")
+        .replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "")
+        .trim();
       if (val.length > 1) nombre = val;
     }
     if (linea.match(/Documento|Document/i)) {
@@ -100,8 +106,8 @@ function combinarDatos(resultados) {
 
   for (const r of resultados) {
     if (!r) continue;
-    if (!combined.apellido && r.apellido && !r.apellido.toLowerCase().includes("document")) combined.apellido = r.apellido;
-    if (!combined.nombre && r.nombre && !r.nombre.toLowerCase().includes("document")) combined.nombre = r.nombre;
+    if (!combined.apellido && r.apellido && !r.apellido.toLowerCase().includes("document") && !r.apellido.toUpperCase().includes("EXTRANJERO")) combined.apellido = r.apellido;
+    if (!combined.nombre && r.nombre && !r.nombre.toLowerCase().includes("document") && !r.nombre.toUpperCase().includes("EXTRANJERO")) combined.nombre = r.nombre;
     if (!combined.dni && r.dni) combined.dni = r.dni;
     if (!combined.fechaNacimiento && r.fechaNacimiento && fechaValida(r.fechaNacimiento)) combined.fechaNacimiento = r.fechaNacimiento;
   }
