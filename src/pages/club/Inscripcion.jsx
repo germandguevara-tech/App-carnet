@@ -12,66 +12,89 @@ const estilos = {
   stepLine: (done) => ({ flex:1, height:2, background: done ? "#c9a84c" : "#ede5d5" }),
 };
 
-function parsearDNI(texto) {
+function parsearMRZ(texto) {
+  const lineas = texto.split("\n").map(l => l.trim()).filter(Boolean);
+  for (let i = 0; i < lineas.length; i++) {
+    const linea = lineas[i];
+    if (linea.match(/^IDARG\d{7,8}/)) {
+      const dni = linea.match(/IDARG(\d{7,8})/)?.[1] || "";
+      const linea2 = lineas[i + 1] || "";
+      const linea3 = lineas[i + 2] || "";
+      let fechaNacimiento = "";
+      const fechaMatch = linea2.match(/(\d{6})[MF]/);
+      if (fechaMatch) {
+        const f = fechaMatch[1];
+        const anio = parseInt(f.substring(0,2));
+        const anioCompleto = anio > 30 ? `19${f.substring(0,2)}` : `20${f.substring(0,2)}`;
+        const mes = f.substring(2,4);
+        const dia = f.substring(4,6);
+        fechaNacimiento = `${anioCompleto}-${mes}-${dia}`;
+      }
+      let apellido = "", nombre = "";
+      if (linea3.includes("<<")) {
+        const partes = linea3.split("<<");
+        apellido = partes[0].replace(/</g, " ").trim();
+        nombre = (partes[1] || "").replace(/</g, " ").trim();
+      }
+      if (dni || apellido) {
+        return { dni, apellido, nombre, fechaNacimiento, fuente: "MRZ" };
+      }
+    }
+  }
+  return null;
+}
+
+function parsearOCR(texto) {
   if (!texto) return null;
   const lineas = texto.split("\n").map(l => l.trim()).filter(Boolean);
-
-  const partes = texto.split("@");
-  if (partes.length >= 5) {
-    return {
-      apellido: partes[1]?.trim() || "",
-      nombre: partes[2]?.trim() || "",
-      dni: partes[4]?.trim()?.replace(/\./g,"") || "",
-      fechaNacimiento: partes[6]?.trim() || "",
-    };
-  }
-
   let apellido = "", nombre = "", dni = "", fechaNacimiento = "";
 
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
     const siguiente = lineas[i + 1] || "";
 
-    if (linea.includes("Apellido") || linea.includes("Surname")) {
-      apellido = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+    if (linea.match(/Apellido|Surname/i)) {
+      const val = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+      if (val.length > 1) apellido = val;
     }
-    if (linea.includes("Nombre") && !linea.includes("Nacimiento")) {
-      nombre = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+    if (linea.match(/^Nombre|^Name/i) && !linea.match(/Nacimiento|birth/i)) {
+      const val = siguiente.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+      if (val.length > 1) nombre = val;
     }
-    if (linea.includes("Documento") || linea.includes("Document")) {
+    if (linea.match(/Documento|Document/i)) {
       const dniLimpio = siguiente.replace(/\./g, "").replace(/\s/g, "");
       const dniMatch = dniLimpio.match(/\d{7,8}/);
-      if (dniMatch) dni = dniMatch[0].trim();
+      if (dniMatch) dni = dniMatch[0];
     }
-    if (linea.includes("nacimiento") || linea.includes("birth")) {
-      const siguienteLimpio = siguiente.replace(/\//g, " ").replace(/\s+/g, " ").trim();
-      const formatoPuntos = siguienteLimpio.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (linea.match(/nacimiento|birth/i)) {
+      const sig = siguiente.replace(/\//g, " ").replace(/\s+/g, " ").trim();
+      const formatoPuntos = sig.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
       if (formatoPuntos) {
-        const dia = formatoPuntos[1].padStart(2, "0");
-        const mes = formatoPuntos[2].padStart(2, "0");
-        const anio = formatoPuntos[3];
-        fechaNacimiento = `${anio}-${mes}-${dia}`;
+        fechaNacimiento = `${formatoPuntos[3]}-${formatoPuntos[2].padStart(2,"0")}-${formatoPuntos[1].padStart(2,"0")}`;
       } else {
-        const partesFecha = siguienteLimpio.match(/(\d{1,2})\s+([A-Z]{3})\s+[A-Z]{3}\s+(\d{4})/);
-        if (partesFecha) {
-          const meses = { ENE:"01", JAN:"01", FEB:"02", MAR:"03", ABR:"04", APR:"04", MAY:"05", JUN:"06", JUL:"07", AGO:"08", AUG:"08", SEP:"09", OCT:"10", NOV:"11", DIC:"12", DEC:"12" };
-          const dia = partesFecha[1].padStart(2, "0");
-          const mes = meses[partesFecha[2]] || "01";
-          const anio = partesFecha[3];
-          fechaNacimiento = `${anio}-${mes}-${dia}`;
-        }
+        const meses = { ENE:"01",JAN:"01",FEB:"02",MAR:"03",ABR:"04",APR:"04",MAY:"05",JUN:"06",JUL:"07",AGO:"08",AUG:"08",SEP:"09",OCT:"10",NOV:"11",DIC:"12",DEC:"12" };
+        const p = sig.match(/(\d{1,2})\s+([A-Z]{3})\s+[A-Z]{3}\s+(\d{4})/);
+        if (p) fechaNacimiento = `${p[3]}-${meses[p[2]]||"01"}-${p[1].padStart(2,"0")}`;
       }
     }
   }
-
-  if (apellido || nombre || dni) {
-    return { apellido, nombre, dni, fechaNacimiento };
-  }
-
+  if (apellido || nombre || dni) return { apellido, nombre, dni, fechaNacimiento, fuente: "OCR" };
   return null;
 }
 
-async function leerCodigoDeImagen(file) {
+function combinarDatos(resultados) {
+  const combined = { apellido:"", nombre:"", dni:"", fechaNacimiento:"" };
+  for (const r of resultados) {
+    if (!r) continue;
+    if (!combined.apellido && r.apellido) combined.apellido = r.apellido;
+    if (!combined.nombre && r.nombre) combined.nombre = r.nombre;
+    if (!combined.dni && r.dni) combined.dni = r.dni;
+    if (!combined.fechaNacimiento && r.fechaNacimiento) combined.fechaNacimiento = r.fechaNacimiento;
+  }
+  return combined;
+}
+
+async function leerTextoDeImagen(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -83,14 +106,8 @@ async function leerCodigoDeImagen(file) {
           body: JSON.stringify({ action:"leerDNI", base64, mimeType })
         });
         const data = await response.json();
-        console.log("Respuesta Apps Script:", data);
-        if (data.ok && data.texto) {
-          resolve(data.texto);
-        } else {
-          resolve(null);
-        }
+        resolve(data.ok ? data.texto : null);
       } catch(e) {
-        console.log("Error:", e.message);
         resolve(null);
       }
     };
@@ -145,22 +162,26 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
     setError("");
     setProcesando(true);
     try {
-      let texto = null;
-      console.log("Intentando leer frente...");
-      texto = await leerCodigoDeImagen(fotoFrente);
-      console.log("Resultado frente:", texto);
-      if (!texto) {
-        console.log("Intentando leer dorso...");
-        texto = await leerCodigoDeImagen(fotoDorso);
-        console.log("Resultado dorso:", texto);
-      }
-      if (texto) {
-        console.log("Texto leído:", texto);
-        const parsed = parsearDNI(texto);
-        console.log("Datos parseados:", parsed);
-        if (parsed) setDatos(prev => ({ ...prev, ...parsed }));
-      } else {
-        console.log("No se pudo leer ningún código");
+      const [textoFrente, textoDorso] = await Promise.all([
+        leerTextoDeImagen(fotoFrente),
+        leerTextoDeImagen(fotoDorso)
+      ]);
+      console.log("Texto frente:", textoFrente);
+      console.log("Texto dorso:", textoDorso);
+      const mrzFrente = textoFrente ? parsearMRZ(textoFrente) : null;
+      const mrzDorso = textoDorso ? parsearMRZ(textoDorso) : null;
+      const ocrFrente = textoFrente ? parsearOCR(textoFrente) : null;
+      const ocrDorso = textoDorso ? parsearOCR(textoDorso) : null;
+      console.log("MRZ frente:", mrzFrente);
+      console.log("MRZ dorso:", mrzDorso);
+      console.log("OCR frente:", ocrFrente);
+      console.log("OCR dorso:", ocrDorso);
+      const mrzPriority = mrzDorso || mrzFrente;
+      const ocrPriority = ocrFrente || ocrDorso;
+      const resultado = combinarDatos([mrzPriority, ocrPriority]);
+      console.log("Resultado final:", resultado);
+      if (resultado.apellido || resultado.nombre || resultado.dni) {
+        setDatos(prev => ({ ...prev, ...resultado }));
       }
     } catch(e) {
       console.log("Error:", e.message);
@@ -235,6 +256,21 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
       <button style={estilos.btnGris} onClick={onVolver}>Volver al inicio</button>
     </div>
   );
+
+  const torneoActivo = clubData?.torneoActivo === true;
+  const clubHabilitado = clubData?.habilitado !== false;
+  const puedeInscribir = torneoActivo || clubHabilitado;
+
+  if (clubData && !puedeInscribir) {
+    return (
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"1rem", padding:"2rem", textAlign:"center" }}>
+        <div style={{ fontSize:48 }}>🔒</div>
+        <div style={{ fontSize:18, fontWeight:600, color:"#1e3a4a" }}>Inscripción cerrada</div>
+        <div style={{ fontSize:14, color:"#4a6070" }}>La inscripción no está habilitada en este momento.</div>
+        <button style={{ background:"#8a9eaa", color:"white", border:"none", borderRadius:12, padding:"12px 24px", fontSize:14, fontWeight:600, cursor:"pointer" }} onClick={onVolver}>Volver</button>
+      </div>
+    );
+  }
 
   return (
     <div>

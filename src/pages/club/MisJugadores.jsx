@@ -17,7 +17,7 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
-  const inscripcionActiva = clubData?.habilitado !== false;
+  const inscripcionActiva = clubData?.torneoActivo === true || clubData?.habilitado !== false;
 
   useEffect(() => { cargarJugadores(); }, [userData]);
 
