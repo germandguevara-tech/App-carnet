@@ -58,11 +58,15 @@ function parsearOCR(texto) {
     const siguiente = lineas[i + 1] || "";
 
     if (linea.match(/Apellido|Surname/i)) {
-      const val = siguiente
-        .replace(/EXTRANJERO/gi, "")
-        .replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "")
-        .trim();
-      if (val.length > 1) apellido = val;
+      let j = i + 1;
+      while (j < lineas.length && j < i + 4) {
+        const candidato = lineas[j].replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, "").trim();
+        if (candidato.length > 1 && !candidato.toUpperCase().includes("EXTRANJERO") && !candidato.toUpperCase().includes("DOCUMENT")) {
+          apellido = candidato;
+          break;
+        }
+        j++;
+      }
     }
     if (linea.match(/^Nombre|^Name/i) && !linea.match(/Nacimiento|birth/i)) {
       const val = siguiente
