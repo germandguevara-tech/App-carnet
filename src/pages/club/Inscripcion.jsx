@@ -21,14 +21,18 @@ function parsearMRZ(texto) {
       const linea2 = lineas[i + 1] || "";
       const linea3 = lineas[i + 2] || "";
       let fechaNacimiento = "";
-      const fechaMatch = linea2.match(/\d{7}[MF]/);
+      const fechaMatch = linea2.match(/(\d{6})\d?[MF]/);
       if (fechaMatch) {
-        const f = fechaMatch[0].substring(0,6);
+        const f = fechaMatch[1];
         const anio = parseInt(f.substring(0,2));
         const anioCompleto = anio > 30 ? `19${f.substring(0,2)}` : `20${f.substring(0,2)}`;
         const mes = f.substring(2,4);
         const dia = f.substring(4,6);
-        fechaNacimiento = `${anioCompleto}-${mes}-${dia}`;
+        const mesNum = parseInt(mes);
+        const diaNum = parseInt(dia);
+        if (mesNum >= 1 && mesNum <= 12 && diaNum >= 1 && diaNum <= 31) {
+          fechaNacimiento = `${anioCompleto}-${mes}-${dia}`;
+        }
       }
       let apellido = "", nombre = "";
       if (linea3.includes("<<")) {
@@ -84,12 +88,22 @@ function parsearOCR(texto) {
 
 function combinarDatos(resultados) {
   const combined = { apellido:"", nombre:"", dni:"", fechaNacimiento:"" };
+
+  function fechaValida(f) {
+    if (!f) return false;
+    const partes = f.split("-");
+    if (partes.length !== 3) return false;
+    const mes = parseInt(partes[1]);
+    const dia = parseInt(partes[2]);
+    return mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31;
+  }
+
   for (const r of resultados) {
     if (!r) continue;
-    if (!combined.apellido && r.apellido) combined.apellido = r.apellido;
-    if (!combined.nombre && r.nombre) combined.nombre = r.nombre;
+    if (!combined.apellido && r.apellido && !r.apellido.toLowerCase().includes("document")) combined.apellido = r.apellido;
+    if (!combined.nombre && r.nombre && !r.nombre.toLowerCase().includes("document")) combined.nombre = r.nombre;
     if (!combined.dni && r.dni) combined.dni = r.dni;
-    if (!combined.fechaNacimiento && r.fechaNacimiento) combined.fechaNacimiento = r.fechaNacimiento;
+    if (!combined.fechaNacimiento && r.fechaNacimiento && fechaValida(r.fechaNacimiento)) combined.fechaNacimiento = r.fechaNacimiento;
   }
   return combined;
 }
