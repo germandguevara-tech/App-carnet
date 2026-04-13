@@ -21,9 +21,9 @@ function parsearMRZ(texto) {
       const linea2 = lineas[i + 1] || "";
       const linea3 = lineas[i + 2] || "";
       let fechaNacimiento = "";
-      const fechaMatch = linea2.match(/(\d{6})[MF]/);
+      const fechaMatch = linea2.match(/\d{7}[MF]/);
       if (fechaMatch) {
-        const f = fechaMatch[1];
+        const f = fechaMatch[0].substring(0,6);
         const anio = parseInt(f.substring(0,2));
         const anioCompleto = anio > 30 ? `19${f.substring(0,2)}` : `20${f.substring(0,2)}`;
         const mes = f.substring(2,4);
