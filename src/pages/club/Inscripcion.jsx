@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase";
-import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
 import { subirFotoADrive, generarNombreCarnet, generarNombreDniFrente, generarNombreDniDorso } from "../../utils/drive";
 
 const estilos = {
@@ -197,23 +197,10 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
     if (!fotoCarnet) { setError("Falta la foto carnet"); return; }
     setLoading(true); setError("");
     try {
-      const snapDni = await getDocs(query(
-        collection(db, "jugadores_carnet"),
-        where("dni", "==", datos.dni),
-        where("clubId", "==", userData.clubId)
-      ));
-      if (!snapDni.empty) {
-        const jugadorExistente = snapDni.docs[0].data();
-        const estadosActivos = ["pendiente", "habilitado", "baja_solicitada"];
-        if (estadosActivos.includes(jugadorExistente.estado)) {
-          setError("Ya existe un jugador con ese DNI inscripto en este club");
-          setLoading(false);
-          return;
-        }
-      }
       const torneoNombre = clubData?.torneoNombre || "Torneo";
       const clubNombre = clubData?.nombre || "Club";
       let urlCarnet = "", urlDniFrente = "", urlDniDorso = "";
+
       if (fotoCarnet) {
         const nombre = generarNombreCarnet(datos.apellido, datos.nombre, datos.categoria);
         const result = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:nombre, torneoNombre, clubNombre });
@@ -229,13 +216,36 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
         const result = await subirFotoADrive({ archivo:fotoDorso, nombreArchivo:nombre, torneoNombre, clubNombre });
         urlDniDorso = result.url;
       }
-      await addDoc(collection(db, "jugadores_carnet"), {
-        apellido: datos.apellido, nombre: datos.nombre, dni: datos.dni,
-        fechaNacimiento: datos.fechaNacimiento, categoria: datos.categoria,
-        clubId: userData.clubId, torneoId: clubData.torneoId,
-        estado: "pendiente", creadoEn: new Date(),
-        fotoCarnetUrl: urlCarnet, fotoDniFrente: urlDniFrente, fotoDniDorso: urlDniDorso,
-      });
+
+      const snapExistente = await getDocs(query(
+        collection(db, "jugadores_carnet"),
+        where("dni", "==", datos.dni),
+        where("clubId", "==", userData.clubId),
+        where("torneoId", "==", clubData.torneoId)
+      ));
+
+      const datosJugador = {
+        apellido: datos.apellido,
+        nombre: datos.nombre,
+        dni: datos.dni,
+        fechaNacimiento: datos.fechaNacimiento,
+        categoria: datos.categoria,
+        clubId: userData.clubId,
+        torneoId: clubData.torneoId,
+        estado: "pendiente",
+        motivoRechazo: "",
+        fotoCarnetUrl: urlCarnet,
+        fotoDniFrente: urlDniFrente,
+        fotoDniDorso: urlDniDorso,
+        creadoEn: new Date(),
+      };
+
+      if (!snapExistente.empty) {
+        await updateDoc(doc(db, "jugadores_carnet", snapExistente.docs[0].id), datosJugador);
+      } else {
+        await addDoc(collection(db, "jugadores_carnet"), datosJugador);
+      }
+
       setExito(true);
     } catch(e) { setError("Error al inscribir: " + e.message); }
     setLoading(false);
