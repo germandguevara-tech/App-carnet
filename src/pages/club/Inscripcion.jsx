@@ -248,7 +248,6 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
       ));
 
       console.log("Documentos encontrados con ese DNI en este club:", snapExistente.size);
-      snapExistente.docs.forEach(d => console.log("Doc encontrado:", d.id, d.data().dni, d.data().clubId, d.data().estado));
 
       const datosJugador = {
         apellido: datos.apellido,
@@ -267,6 +266,15 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
       };
 
       if (!snapExistente.empty) {
+        const jugadorExistente = snapExistente.docs[0].data();
+        const estadosQuePermiteReinscribir = ["rechazado", "inactivo"];
+
+        if (!estadosQuePermiteReinscribir.includes(jugadorExistente.estado)) {
+          setError(`Este jugador ya está inscripto en este club (estado: ${jugadorExistente.estado})`);
+          setLoading(false);
+          return;
+        }
+
         await updateDoc(doc(db, "jugadores_carnet", snapExistente.docs[0].id), datosJugador);
       } else {
         await addDoc(collection(db, "jugadores_carnet"), datosJugador);
