@@ -6,7 +6,7 @@ import { subirFotoADrive, generarNombreCarnet, generarNombreDniFrente, generarNo
 const estilos = {
   btn: { width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:12, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer" },
   btnGris: { width:"100%", background:"#8a9eaa", color:"white", border:"none", borderRadius:12, padding:"12px", fontSize:14, fontWeight:600, cursor:"pointer" },
-  input: { width:"100%", padding:"12px 14px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box", background:"white" },
+  input: { width:"100%", padding:"12px 14px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box", background:"white", color:"#1a2e38", WebkitTextFillColor:"#1a2e38" },
   label: { fontSize:12, color:"#4a6070", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", display:"block", marginBottom:6 },
   stepDot: (activo, done) => ({ width:28, height:28, borderRadius:"50%", background: done ? "#c9a84c" : activo ? "#1e3a4a" : "#ede5d5", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:600, color: done||activo ? "white" : "#8a9eaa", flexShrink:0 }),
   stepLine: (done) => ({ flex:1, height:2, background: done ? "#c9a84c" : "#ede5d5" }),
@@ -244,9 +244,10 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
       const snapExistente = await getDocs(query(
         collection(db, "jugadores_carnet"),
         where("dni", "==", datos.dni),
-        where("clubId", "==", userData.clubId),
-        where("torneoId", "==", clubData.torneoId)
+        where("clubId", "==", userData.clubId)
       ));
+
+      console.log("Documentos encontrados con ese DNI en este club:", snapExistente.size);
 
       const datosJugador = {
         apellido: datos.apellido,
@@ -374,7 +375,7 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
           </div>
           <div>
             <label style={estilos.label}>Categoría</label>
-            <select style={estilos.input} value={datos.categoria} onChange={e => setDatos({...datos, categoria:e.target.value})}>
+            <select style={{ ...estilos.input, appearance:"none", color:"#1a2e38", WebkitTextFillColor:"#1a2e38" }} value={datos.categoria} onChange={e => setDatos({...datos, categoria:e.target.value})}>
               <option value="">— Seleccioná la categoría —</option>
               {categorias.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
             </select>
