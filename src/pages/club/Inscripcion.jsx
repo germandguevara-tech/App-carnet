@@ -248,6 +248,7 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
       ));
 
       console.log("Documentos encontrados con ese DNI en este club:", snapExistente.size);
+      snapExistente.docs.forEach(d => console.log("Doc encontrado:", d.id, d.data().dni, d.data().clubId, d.data().estado));
 
       const datosJugador = {
         apellido: datos.apellido,
