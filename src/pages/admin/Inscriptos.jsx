@@ -260,18 +260,33 @@ export default function Inscriptos() {
               <button onClick={() => setJugadorSeleccionado(null)} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
             </div>
 
-            <div style={{ padding:"1.5rem", display:"flex", gap:"1.5rem", flexWrap:"wrap" }}>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                <div style={{ fontSize:11, color:"#8a9eaa", fontWeight:600, textTransform:"uppercase" }}>Foto carnet</div>
-                <div style={{ width:120, height:160, borderRadius:8, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #ede5d5" }}>
-                  {jugadorSeleccionado.fotoCarnetUrl ? <img src={urlVisualizacion(jugadorSeleccionado.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:32 }}>👤</span>}
+            <div style={{ padding:"1.5rem" }}>
+              <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginBottom:"1rem" }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <div style={{ fontSize:11, color:"#8a9eaa", fontWeight:600, textTransform:"uppercase" }}>Foto carnet</div>
+                  <div style={{ width:120, height:160, borderRadius:8, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #ede5d5" }}>
+                    {jugadorSeleccionado.fotoCarnetUrl ? (
+                      <img src={urlVisualizacion(jugadorSeleccionado.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover", imageOrientation:"from-image" }} />
+                    ) : <span style={{ fontSize:32 }}>👤</span>}
+                  </div>
                 </div>
-              </div>
 
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                <div style={{ fontSize:11, color:"#8a9eaa", fontWeight:600, textTransform:"uppercase" }}>Foto DNI frente</div>
-                <div style={{ width:180, height:120, borderRadius:8, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #ede5d5" }}>
-                  {jugadorSeleccionado.fotoDniFrente ? <img src={urlVisualizacion(jugadorSeleccionado.fotoDniFrente)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:24, color:"#8a9eaa" }}>Sin foto</span>}
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <div style={{ fontSize:11, color:"#8a9eaa", fontWeight:600, textTransform:"uppercase" }}>Foto DNI frente</div>
+                  <div style={{ width:200, height:130, borderRadius:8, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #ede5d5" }}>
+                    {jugadorSeleccionado.fotoDniFrente ? (
+                      <img src={urlVisualizacion(jugadorSeleccionado.fotoDniFrente)} style={{ width:"100%", height:"100%", objectFit:"contain", imageOrientation:"from-image" }} />
+                    ) : <span style={{ fontSize:24, color:"#8a9eaa" }}>Sin foto</span>}
+                  </div>
+                </div>
+
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <div style={{ fontSize:11, color:"#8a9eaa", fontWeight:600, textTransform:"uppercase" }}>Foto DNI dorso</div>
+                  <div style={{ width:200, height:130, borderRadius:8, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", border:"1px solid #ede5d5" }}>
+                    {jugadorSeleccionado.fotoDniDorso ? (
+                      <img src={urlVisualizacion(jugadorSeleccionado.fotoDniDorso)} style={{ width:"100%", height:"100%", objectFit:"contain", imageOrientation:"from-image" }} />
+                    ) : <span style={{ fontSize:24, color:"#8a9eaa" }}>Sin foto</span>}
+                  </div>
                 </div>
               </div>
 
