@@ -98,6 +98,7 @@ export default function ClubDashboard() {
 
         {tab === "jugadores" && (
           <MisJugadores
+            key={tab}
             clubData={clubData}
             userData={userData}
             onVolver={() => setTab("inicio")}

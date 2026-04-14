@@ -35,22 +35,27 @@ export default function Verificador({ onVolver }) {
     setEscaneando(true);
     codeReader.current = new BrowserMultiFormatReader();
     try {
-      await codeReader.current.decodeFromVideoDevice(
-        camaraSeleccionada || undefined,
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            const texto = result.getText();
-            console.log("QR leído:", texto);
-            if (texto.includes("/verificar/")) {
-              const id = texto.split("/verificar/")[1].split("?")[0].trim();
-              codeReader.current?.reset();
-              setEscaneando(false);
-              setResultado(id);
-            }
+      const constraints = camaraSeleccionada
+        ? { deviceId: { exact: camaraSeleccionada } }
+        : { facingMode: "environment" };
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+
+      codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
+        if (result) {
+          const texto = result.getText();
+          console.log("QR leído:", texto);
+          if (texto.includes("/verificar/")) {
+            const id = texto.split("/verificar/")[1].split("?")[0].trim();
+            stream.getTracks().forEach(t => t.stop());
+            codeReader.current?.reset();
+            setEscaneando(false);
+            setResultado(id);
           }
         }
-      );
+      });
     } catch(e) {
       setError("Error al acceder a la cámara: " + e.message);
       setEscaneando(false);
@@ -58,6 +63,9 @@ export default function Verificador({ onVolver }) {
   }
 
   function detener() {
+    if (videoRef.current?.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+    }
     codeReader.current?.reset();
     setEscaneando(false);
   }
