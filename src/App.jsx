@@ -5,6 +5,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import ClubDashboard from "./pages/club/Dashboard";
 import ArbitroDashboard from "./pages/arbitro/Dashboard";
 import Verificar from "./pages/Verificar";
+import InscripcionPublica from "./pages/InscripcionPublica";
 
 function RutaProtegida({ children, rol }) {
   const { user, userData, loading } = useAuth();
@@ -47,6 +48,7 @@ export default function App() {
             </RutaProtegida>
           } />
           <Route path="/verificar/:id" element={<Verificar />} />
+          <Route path="/inscribir/:clubId/:torneoId" element={<InscripcionPublica />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>

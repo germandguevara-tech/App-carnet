@@ -81,6 +81,15 @@ export default function ClubDashboard() {
             <button onClick={() => setTab("jugadores")} style={{ width:"100%", background:"white", color:"#1e3a4a", border:"1.5px solid #1e3a4a", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               👥 Ver mis jugadores
             </button>
+            <button
+              onClick={() => {
+                const link = `${window.location.origin}/inscribir/${clubData?.uid}/${clubData?.torneoId}`;
+                const msg = encodeURIComponent(`Hola! Para inscribirte en *${clubData?.nombre}* usá este link:\n\n${link}`);
+                window.open(`https://wa.me/?text=${msg}`, "_blank");
+              }}
+              style={{ width:"100%", background:"#25D366", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              📲 Compartir link de inscripción
+            </button>
             <button onClick={() => setTab("carnets")} style={{ width:"100%", background:"#c9a84c", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               🪪 Carnets digitales
             </button>
