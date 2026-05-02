@@ -66,8 +66,8 @@ export default function ImageCropper({ imageSrc, mode, onSave, onCancel }) {
 
     image.onload = () => {
       const ratio = RATIOS[mode] ?? 1;
-      const cw = Math.max(canvas.clientWidth, canvas.offsetWidth, 320);
-      const ch = Math.round(cw / ratio);
+      const cw = mode === "carnet" ? 220 : Math.max(canvas.clientWidth, canvas.offsetWidth, 320);
+      const ch = mode === "carnet" ? 293 : Math.round(cw / ratio);
       canvas.width  = cw;
       canvas.height = ch;
       cvsSize.current = { w: cw, h: ch };
@@ -148,17 +148,59 @@ export default function ImageCropper({ imageSrc, mode, onSave, onCancel }) {
       }
     }
 
+    // ── mouse handlers ──
+
+    function onMouseDown(e) {
+      G.current = { type: "drag", x: e.clientX, y: e.clientY };
+      canvas.style.cursor = "grabbing";
+    }
+
+    function onMouseMove(e) {
+      if (!G.current || G.current.type !== "drag") return;
+      T.current.cx += e.clientX - G.current.x;
+      T.current.cy += e.clientY - G.current.y;
+      G.current.x = e.clientX;
+      G.current.y = e.clientY;
+      clamp();
+      redraw();
+    }
+
+    function onMouseUp() {
+      G.current = null;
+      canvas.style.cursor = "grab";
+    }
+
+    function onWheel(e) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const minS = getMinScale(T.current.rot);
+      T.current.scale = Math.max(minS, Math.min(5, T.current.scale + delta));
+      clamp();
+      redraw();
+    }
+
     const opts = { passive: false };
     canvas.addEventListener("touchstart",  onTouchStart,  opts);
     canvas.addEventListener("touchmove",   onTouchMove,   opts);
     canvas.addEventListener("touchend",    onTouchEnd,    opts);
     canvas.addEventListener("touchcancel", onTouchEnd,    opts);
+    canvas.addEventListener("mousedown",   onMouseDown);
+    canvas.addEventListener("mousemove",   onMouseMove);
+    canvas.addEventListener("mouseup",     onMouseUp);
+    canvas.addEventListener("mouseleave",  onMouseUp);
+    canvas.addEventListener("wheel",       onWheel,       opts);
+    canvas.style.cursor = "grab";
 
     return () => {
       canvas.removeEventListener("touchstart",  onTouchStart);
       canvas.removeEventListener("touchmove",   onTouchMove);
       canvas.removeEventListener("touchend",    onTouchEnd);
       canvas.removeEventListener("touchcancel", onTouchEnd);
+      canvas.removeEventListener("mousedown",   onMouseDown);
+      canvas.removeEventListener("mousemove",   onMouseMove);
+      canvas.removeEventListener("mouseup",     onMouseUp);
+      canvas.removeEventListener("mouseleave",  onMouseUp);
+      canvas.removeEventListener("wheel",       onWheel);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [imageSrc, mode]);
@@ -187,17 +229,19 @@ export default function ImageCropper({ imageSrc, mode, onSave, onCancel }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <div style={{ border: "2px solid red", lineHeight: 0, position: "relative" }}>
-        <canvas
-          ref={canvasRef}
-          style={{ width: "100%", display: "block", touchAction: "none", aspectRatio: cssRatio }}
-        />
-        {mode === "carnet" && (
-          <div style={{
-            position: "absolute", inset: 0, pointerEvents: "none",
-            background: "radial-gradient(ellipse 75% 65% at 50% 50%, transparent 99%, rgba(0,0,0,0.45) 100%)",
-          }} />
-        )}
+      <div style={{ margin: mode === "carnet" ? "0 auto" : undefined, width: mode === "carnet" ? 220 : undefined }}>
+        <div style={{ border: "2px solid red", lineHeight: 0, position: "relative" }}>
+          <canvas
+            ref={canvasRef}
+            style={{ width: "100%", display: "block", touchAction: "none", aspectRatio: cssRatio }}
+          />
+          {mode === "carnet" && (
+            <div style={{
+              position: "absolute", inset: 0, pointerEvents: "none",
+              background: "radial-gradient(ellipse 75% 65% at 50% 50%, transparent 99%, rgba(0,0,0,0.45) 100%)",
+            }} />
+          )}
+        </div>
       </div>
 
       <p style={{ fontSize: 12, color: "#4a6070", textAlign: "center", margin: 0 }}>
