@@ -187,11 +187,17 @@ export default function ImageCropper({ imageSrc, mode, onSave, onCancel }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <div style={{ border: "2px solid red", lineHeight: 0 }}>
+      <div style={{ border: "2px solid red", lineHeight: 0, position: "relative" }}>
         <canvas
           ref={canvasRef}
           style={{ width: "100%", display: "block", touchAction: "none", aspectRatio: cssRatio }}
         />
+        {mode === "carnet" && (
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: "radial-gradient(ellipse 75% 65% at 50% 50%, transparent 99%, rgba(0,0,0,0.45) 100%)",
+          }} />
+        )}
       </div>
 
       <p style={{ fontSize: 12, color: "#4a6070", textAlign: "center", margin: 0 }}>
