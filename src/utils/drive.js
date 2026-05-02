@@ -63,15 +63,15 @@ export function generarNombreDniDorso(apellido, nombre, dni) {
   return `${nombreLimpio}.jpg`;
 }
 
-export function urlVisualizacion(urlDrive) {
+export function urlVisualizacion(urlDrive, tamaño = 100) {
   if (!urlDrive) return "";
   const match = urlDrive.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (match) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400`;
+    return `https://drive.google.com/thumbnail?id=${match[0].split("/d/")[1]}&sz=w${tamaño}`;
   }
   const match2 = urlDrive.match(/id=([a-zA-Z0-9_-]+)/);
   if (match2) {
-    return `https://drive.google.com/thumbnail?id=${match2[1]}&sz=w400`;
+    return `https://drive.google.com/thumbnail?id=${match2[1]}&sz=w${tamaño}`;
   }
   return urlDrive;
 }

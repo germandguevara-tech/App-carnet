@@ -42,9 +42,11 @@ export default function Inscriptos() {
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [categorias, setCategorias] = useState([]);
   const [seleccionados, setSeleccionados] = useState([]);
+  const [pagina, setPagina] = useState(1);
+  const PORPAGINA = 20;
 
   useEffect(() => { cargarFiltros(); }, []);
-  useEffect(() => { if(torneoFiltro) cargarJugadores(); }, [torneoFiltro, clubFiltro, estadoFiltro, orden, categoriaFiltro]);
+  useEffect(() => { if(torneoFiltro) { setPagina(1); cargarJugadores(); } }, [torneoFiltro, clubFiltro, estadoFiltro, orden, categoriaFiltro]);
   useEffect(() => { setSeleccionados([]); }, [torneoFiltro, clubFiltro, estadoFiltro, categoriaFiltro]);
 
   async function cargarFiltros() {
@@ -148,6 +150,9 @@ export default function Inscriptos() {
     descargarExcel(listaConNombres, `Inscriptos-${torneoNombre}`);
   }
 
+  const jugadoresPaginados = jugadores.slice((pagina-1)*PORPAGINA, pagina*PORPAGINA);
+  const totalPaginas = Math.ceil(jugadores.length / PORPAGINA);
+
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.5rem" }}>
@@ -218,7 +223,7 @@ export default function Inscriptos() {
           <tbody>
             {loading && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</td></tr>}
             {!loading && jugadores.length === 0 && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</td></tr>}
-            {jugadores.map(j => (
+            {jugadoresPaginados.map(j => (
               <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer" }}
                 onMouseEnter={e => e.currentTarget.style.background="#f9f7f4"}
                 onMouseLeave={e => e.currentTarget.style.background="white"}>
@@ -251,6 +256,14 @@ export default function Inscriptos() {
           </tbody>
         </table>
       </div>
+
+      {totalPaginas > 1 && (
+        <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:"1rem" }}>
+          <button style={{ background:"none", border:"1px solid #ede5d5", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:13, color: pagina===1 ? "#8a9eaa" : "#1e3a4a" }} onClick={() => setPagina(p => Math.max(1,p-1))} disabled={pagina===1}>← Anterior</button>
+          <span style={{ fontSize:13, color:"#4a6070", padding:"6px 14px" }}>{pagina} / {totalPaginas}</span>
+          <button style={{ background:"none", border:"1px solid #ede5d5", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:13, color: pagina===totalPaginas ? "#8a9eaa" : "#1e3a4a" }} onClick={() => setPagina(p => Math.min(totalPaginas,p+1))} disabled={pagina===totalPaginas}>Siguiente →</button>
+        </div>
+      )}
 
       {jugadorSeleccionado && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:"1rem" }}>

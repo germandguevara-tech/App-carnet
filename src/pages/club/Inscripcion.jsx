@@ -147,6 +147,7 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
   const [fotoCarnet, setFotoCarnet] = useState(null);
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [progreso, setProgreso] = useState("");
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState("");
   const [exito, setExito] = useState(false);
@@ -225,21 +226,28 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
       const clubNombre = clubData?.nombre || "Club";
       let urlCarnet = "", urlDniFrente = "", urlDniDorso = "";
 
+      setProgreso("Subiendo foto carnet...");
       if (fotoCarnet) {
         const nombre = generarNombreCarnet(datos.apellido, datos.nombre, datos.categoria);
         const result = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:nombre, torneoNombre, clubNombre });
         urlCarnet = result.url;
       }
+
+      setProgreso("Subiendo foto DNI frente...");
       if (fotoFrente) {
         const nombre = generarNombreDniFrente(datos.apellido, datos.nombre, datos.dni);
         const result = await subirFotoADrive({ archivo:fotoFrente, nombreArchivo:nombre, torneoNombre, clubNombre });
         urlDniFrente = result.url;
       }
+
+      setProgreso("Subiendo foto DNI dorso...");
       if (fotoDorso) {
         const nombre = generarNombreDniDorso(datos.apellido, datos.nombre, datos.dni);
         const result = await subirFotoADrive({ archivo:fotoDorso, nombreArchivo:nombre, torneoNombre, clubNombre });
         urlDniDorso = result.url;
       }
+
+      setProgreso("Guardando inscripción...");
 
       const snapExistente = await getDocs(query(
         collection(db, "jugadores_carnet"),
@@ -416,7 +424,9 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
             </label>
           </div>
           {error && <div style={{ color:"#c0392b", fontSize:13 }}>{error}</div>}
-          <button style={{ ...estilos.btn, opacity: loading ? 0.7 : 1 }} onClick={confirmarInscripcion} disabled={loading}>{loading ? "Inscribiendo..." : "Confirmar inscripción"}</button>
+          <button style={{ ...estilos.btn, opacity: loading ? 0.7 : 1 }} onClick={confirmarInscripcion} disabled={loading}>
+            {loading ? progreso || "Inscribiendo..." : "Confirmar inscripción"}
+          </button>
           <button style={estilos.btnGris} onClick={() => setPaso(2)}>← Volver</button>
         </div>
       )}
