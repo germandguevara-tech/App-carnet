@@ -3,6 +3,7 @@ import { db } from "../firebase";
 import { collection, addDoc, getDocs, doc, getDoc, query, where, updateDoc } from "firebase/firestore";
 import { subirFotoADrive, generarNombreCarnet, generarNombreDniFrente, generarNombreDniDorso } from "../utils/drive";
 import { useParams } from "react-router-dom";
+import ImageCropper from "../components/ImageCropper";
 
 const estilos = {
   btn: { width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:12, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer" },
@@ -115,15 +116,18 @@ export default function InscripcionPublica() {
   const [torneoData, setTorneoData] = useState(null);
   const [categorias, setCategorias] = useState([]);
   const [datos, setDatos] = useState({ apellido:"", nombre:"", dni:"", fechaNacimiento:"", categoria:"" });
-  const [fotoFrente, setFotoFrente] = useState(null);
-  const [fotoDorso, setFotoDorso] = useState(null);
-  const [fotoCarnet, setFotoCarnet] = useState(null);
+  const [fotoFrente, setFotoFrente] = useState(null);   // dataURL string
+  const [fotoDorso, setFotoDorso] = useState(null);     // dataURL string
+  const [fotoCarnet, setFotoCarnet] = useState(null);   // dataURL string
   const [procesando, setProcesando] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [progreso, setProgreso] = useState("");
   const [error, setError] = useState("");
   const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [inscripcionCerrada, setInscripcionCerrada] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState(null);
+  const [cropperTarget, setCropperTarget] = useState(null); // "frente" | "dorso" | "carnet"
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -153,7 +157,20 @@ export default function InscripcionPublica() {
     setCargando(false);
   }
 
-  async function leerTextoDeImagen(file) {
+  // Accepts a dataURL string (from ImageCropper) or a File object.
+  async function leerTextoDeImagen(fileOrDataURL) {
+    if (typeof fileOrDataURL === "string") {
+      try {
+        const [header, base64] = fileOrDataURL.split(",");
+        const mimeType = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+        const response = await fetch(import.meta.env.VITE_APPS_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({ action:"leerDNI", base64, mimeType })
+        });
+        const data = await response.json();
+        return data.ok ? data.texto : null;
+      } catch(e) { return null; }
+    }
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -161,13 +178,13 @@ export default function InscripcionPublica() {
           const base64 = e.target.result.split(",")[1];
           const response = await fetch(import.meta.env.VITE_APPS_SCRIPT_URL, {
             method: "POST",
-            body: JSON.stringify({ action:"leerDNI", base64, mimeType: file.type })
+            body: JSON.stringify({ action:"leerDNI", base64, mimeType: fileOrDataURL.type })
           });
           const data = await response.json();
           resolve(data.ok ? data.texto : null);
         } catch(e) { resolve(null); }
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(fileOrDataURL);
     });
   }
 
@@ -198,10 +215,17 @@ export default function InscripcionPublica() {
       const torneoNombre = torneoData?.nombre || "Torneo";
       const clubNombre = clubData?.nombre || "Club";
       let urlCarnet = "", urlDniFrente = "", urlDniDorso = "";
+
+      setProgreso("Subiendo foto carnet...");
       if (fotoCarnet) { const r = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:generarNombreCarnet(datos.apellido, datos.nombre, datos.categoria), torneoNombre, clubNombre }); urlCarnet = r.url; }
+
+      setProgreso("Subiendo foto DNI frente...");
       if (fotoFrente) { const r = await subirFotoADrive({ archivo:fotoFrente, nombreArchivo:generarNombreDniFrente(datos.apellido, datos.nombre, datos.dni), torneoNombre, clubNombre }); urlDniFrente = r.url; }
+
+      setProgreso("Subiendo foto DNI dorso...");
       if (fotoDorso) { const r = await subirFotoADrive({ archivo:fotoDorso, nombreArchivo:generarNombreDniDorso(datos.apellido, datos.nombre, datos.dni), torneoNombre, clubNombre }); urlDniDorso = r.url; }
 
+      setProgreso("Guardando inscripción...");
       const snapExistente = await getDocs(query(collection(db, "jugadores_carnet"), where("dni", "==", datos.dni), where("clubId", "==", clubId)));
       const datosJugador = { apellido:datos.apellido, nombre:datos.nombre, dni:datos.dni, fechaNacimiento:datos.fechaNacimiento, categoria:datos.categoria, clubId, torneoId, estado:"pendiente", motivoRechazo:"", fotoCarnetUrl:urlCarnet, fotoDniFrente:urlDniFrente, fotoDniDorso:urlDniDorso, creadoEn:new Date() };
 
@@ -218,6 +242,26 @@ export default function InscripcionPublica() {
       setExito(true);
     } catch(e) { setError("Error al inscribir: " + e.message); }
     setLoading(false);
+  }
+
+  function abrirCropper(file, target) {
+    setCropperSrc(URL.createObjectURL(file));
+    setCropperTarget(target);
+  }
+
+  function handleCropSave(dataURL) {
+    if (cropperTarget === "frente") setFotoFrente(dataURL);
+    else if (cropperTarget === "dorso") setFotoDorso(dataURL);
+    else if (cropperTarget === "carnet") setFotoCarnet(dataURL);
+    URL.revokeObjectURL(cropperSrc);
+    setCropperSrc(null);
+    setCropperTarget(null);
+  }
+
+  function handleCropCancel() {
+    URL.revokeObjectURL(cropperSrc);
+    setCropperSrc(null);
+    setCropperTarget(null);
   }
 
   if (cargando) return (
@@ -270,79 +314,107 @@ export default function InscripcionPublica() {
           ))}
         </div>
 
-        {paso === 1 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <div style={{ background:"#fff8e1", border:"1.5px solid #f0c040", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#7a5c00" }}>
-              📌 Subí las dos fotos de tu DNI. El sistema leerá los datos automáticamente.
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-              <div>
-                <label style={estilos.label}>Frente del DNI</label>
-                <label style={{ display:"block", background: fotoFrente ? "#e8f5ee" : "white", border:`2px dashed ${fotoFrente ? "#1a6e4a" : "#ede5d5"}`, borderRadius:12, padding:"1.5rem 1rem", textAlign:"center", cursor:"pointer" }}>
-                  <div style={{ fontSize:28 }}>{fotoFrente ? "✓" : "📄"}</div>
-                  <div style={{ fontSize:12, color: fotoFrente ? "#1a6e4a" : "#8a9eaa", marginTop:4 }}>{fotoFrente ? "Foto cargada" : "Tocar para subir"}</div>
-                  <input type="file" accept="image/*" capture="environment" onChange={e => { if(e.target.files[0]) setFotoFrente(e.target.files[0]); }} style={{ display:"none" }} />
-                </label>
+        {cropperSrc ? (
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+            <ImageCropper
+              imageSrc={cropperSrc}
+              mode={cropperTarget === "carnet" ? "carnet" : "dni"}
+              onSave={handleCropSave}
+              onCancel={handleCropCancel}
+            />
+            <button style={estilos.btnGris} onClick={handleCropCancel}>Cancelar</button>
+          </div>
+        ) : (
+          <>
+            {paso === 1 && (
+              <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+                <div style={{ background:"#fff8e1", border:"1.5px solid #f0c040", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#7a5c00" }}>
+                  📌 Subí las dos fotos de tu DNI. El sistema leerá los datos automáticamente.
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <div>
+                    <label style={estilos.label}>Frente del DNI</label>
+                    <label style={{ display:"block", background: fotoFrente ? "#e8f5ee" : "white", border:`2px dashed ${fotoFrente ? "#1a6e4a" : "#ede5d5"}`, borderRadius:12, cursor:"pointer", overflow:"hidden" }}>
+                      {fotoFrente ? (
+                        <img src={fotoFrente} alt="DNI frente" style={{ width:"100%", aspectRatio:"85.6/54", objectFit:"cover", display:"block" }} />
+                      ) : (
+                        <div style={{ padding:"1.5rem 1rem", textAlign:"center" }}>
+                          <div style={{ fontSize:28 }}>📄</div>
+                          <div style={{ fontSize:12, color:"#8a9eaa", marginTop:4 }}>Tocar para subir</div>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" capture="environment" onChange={e => { if(e.target.files[0]) { abrirCropper(e.target.files[0], "frente"); e.target.value = ""; } }} style={{ display:"none" }} />
+                    </label>
+                  </div>
+                  <div>
+                    <label style={estilos.label}>Dorso del DNI</label>
+                    <label style={{ display:"block", background: fotoDorso ? "#e8f5ee" : "white", border:`2px dashed ${fotoDorso ? "#1a6e4a" : "#ede5d5"}`, borderRadius:12, cursor:"pointer", overflow:"hidden" }}>
+                      {fotoDorso ? (
+                        <img src={fotoDorso} alt="DNI dorso" style={{ width:"100%", aspectRatio:"85.6/54", objectFit:"cover", display:"block" }} />
+                      ) : (
+                        <div style={{ padding:"1.5rem 1rem", textAlign:"center" }}>
+                          <div style={{ fontSize:28 }}>🔄</div>
+                          <div style={{ fontSize:12, color:"#8a9eaa", marginTop:4 }}>Tocar para subir</div>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" capture="environment" onChange={e => { if(e.target.files[0]) { abrirCropper(e.target.files[0], "dorso"); e.target.value = ""; } }} style={{ display:"none" }} />
+                    </label>
+                  </div>
+                </div>
+                {error && <div style={{ color:"#c0392b", fontSize:13 }}>{error}</div>}
+                <button style={{ ...estilos.btn, opacity: procesando ? 0.7 : 1 }} onClick={irPaso2} disabled={procesando}>
+                  {procesando ? "Leyendo datos..." : "Siguiente →"}
+                </button>
               </div>
-              <div>
-                <label style={estilos.label}>Dorso del DNI</label>
-                <label style={{ display:"block", background: fotoDorso ? "#e8f5ee" : "white", border:`2px dashed ${fotoDorso ? "#1a6e4a" : "#ede5d5"}`, borderRadius:12, padding:"1.5rem 1rem", textAlign:"center", cursor:"pointer" }}>
-                  <div style={{ fontSize:28 }}>{fotoDorso ? "✓" : "🔄"}</div>
-                  <div style={{ fontSize:12, color: fotoDorso ? "#1a6e4a" : "#8a9eaa", marginTop:4 }}>{fotoDorso ? "Foto cargada" : "Tocar para subir"}</div>
-                  <input type="file" accept="image/*" capture="environment" onChange={e => { if(e.target.files[0]) setFotoDorso(e.target.files[0]); }} style={{ display:"none" }} />
-                </label>
+            )}
+
+            {paso === 2 && (
+              <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+                <div style={{ fontSize:14, fontWeight:600, color:"#1e3a4a" }}>Tus datos</div>
+                <div><label style={estilos.label}>Apellido/s</label><input style={estilos.input} value={datos.apellido} onChange={e => setDatos({...datos, apellido:e.target.value})} placeholder="Apellido/s" /></div>
+                <div><label style={estilos.label}>Nombre/s</label><input style={estilos.input} value={datos.nombre} onChange={e => setDatos({...datos, nombre:e.target.value})} placeholder="Nombre/s" /></div>
+                <div><label style={estilos.label}>DNI</label><input style={estilos.input} value={datos.dni} onChange={e => setDatos({...datos, dni:e.target.value})} placeholder="Número de documento" /></div>
+                <div><label style={estilos.label}>Fecha de nacimiento</label><input type="date" style={estilos.input} value={datos.fechaNacimiento} onChange={e => setDatos({...datos, fechaNacimiento:e.target.value})} /></div>
+                <div>
+                  <label style={estilos.label}>Categoría</label>
+                  <select style={{ ...estilos.input, color:"#1a2e38", WebkitTextFillColor:"#1a2e38" }} value={datos.categoria} onChange={e => setDatos({...datos, categoria:e.target.value})}>
+                    <option value="">— Seleccioná la categoría —</option>
+                    {categorias.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                  </select>
+                </div>
+                {error && <div style={{ color:"#c0392b", fontSize:13 }}>{error}</div>}
+                <button style={estilos.btn} onClick={() => { if(!datos.apellido||!datos.nombre||!datos.dni||!datos.categoria){setError("Completá todos los campos");return;} setError(""); setPaso(3); }}>Siguiente →</button>
+                <button style={estilos.btnGris} onClick={() => setPaso(1)}>← Volver</button>
               </div>
-            </div>
-            {error && <div style={{ color:"#c0392b", fontSize:13 }}>{error}</div>}
-            <button style={{ ...estilos.btn, opacity: procesando ? 0.7 : 1 }} onClick={irPaso2} disabled={procesando}>
-              {procesando ? "Leyendo datos..." : "Siguiente →"}
-            </button>
-          </div>
-        )}
+            )}
 
-        {paso === 2 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <div style={{ fontSize:14, fontWeight:600, color:"#1e3a4a" }}>Tus datos</div>
-            <div><label style={estilos.label}>Apellido/s</label><input style={estilos.input} value={datos.apellido} onChange={e => setDatos({...datos, apellido:e.target.value})} placeholder="Apellido/s" /></div>
-            <div><label style={estilos.label}>Nombre/s</label><input style={estilos.input} value={datos.nombre} onChange={e => setDatos({...datos, nombre:e.target.value})} placeholder="Nombre/s" /></div>
-            <div><label style={estilos.label}>DNI</label><input style={estilos.input} value={datos.dni} onChange={e => setDatos({...datos, dni:e.target.value})} placeholder="Número de documento" /></div>
-            <div><label style={estilos.label}>Fecha de nacimiento</label><input type="date" style={estilos.input} value={datos.fechaNacimiento} onChange={e => setDatos({...datos, fechaNacimiento:e.target.value})} /></div>
-            <div>
-              <label style={estilos.label}>Categoría</label>
-              <select style={{ ...estilos.input, color:"#1a2e38", WebkitTextFillColor:"#1a2e38" }} value={datos.categoria} onChange={e => setDatos({...datos, categoria:e.target.value})}>
-                <option value="">— Seleccioná la categoría —</option>
-                {categorias.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
-              </select>
-            </div>
-            {error && <div style={{ color:"#c0392b", fontSize:13 }}>{error}</div>}
-            <button style={estilos.btn} onClick={() => { if(!datos.apellido||!datos.nombre||!datos.dni||!datos.categoria){setError("Completá todos los campos");return;} setError(""); setPaso(3); }}>Siguiente →</button>
-            <button style={estilos.btnGris} onClick={() => setPaso(1)}>← Volver</button>
-          </div>
-        )}
-
-        {paso === 3 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <div style={{ fontSize:14, fontWeight:600, color:"#1e3a4a" }}>Foto carnet</div>
-            <div style={{ background:"#fff8e1", border:"1.5px solid #f0c040", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#7a5c00" }}>
-              📸 Sacate una foto de frente, cara y hombros, fondo claro.
-            </div>
-            <div style={{ display:"flex", justifyContent:"center" }}>
-              <label style={{ display:"flex", background: fotoCarnet ? "#e8f5ee" : "#1a1a2e", border:`2px solid ${fotoCarnet ? "#1a6e4a" : "rgba(201,168,76,0.4)"}`, borderRadius:10, width:180, height:240, flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, cursor:"pointer", position:"relative", overflow:"hidden" }}>
-                {fotoCarnet ? (
-                  <img src={URL.createObjectURL(fotoCarnet)} alt="carnet" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                ) : (
-                  <>
-                    <div style={{ width:100, height:133, border:"2.5px solid #c9a84c", borderRadius:4, opacity:0.8 }} />
-                    <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, position:"absolute", bottom:10 }}>Tocá para sacar foto</div>
-                  </>
-                )}
-                <input type="file" accept="image/*" capture="user" onChange={e => { if(e.target.files[0]) setFotoCarnet(e.target.files[0]); }} style={{ display:"none" }} />
-              </label>
-            </div>
-            {error && <div style={{ color:"#c0392b", fontSize:13 }}>{error}</div>}
-            <button style={{ ...estilos.btn, opacity: loading ? 0.7 : 1 }} onClick={confirmarInscripcion} disabled={loading}>{loading ? "Inscribiendo..." : "Confirmar inscripción"}</button>
-            <button style={estilos.btnGris} onClick={() => setPaso(2)}>← Volver</button>
-          </div>
+            {paso === 3 && (
+              <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+                <div style={{ fontSize:14, fontWeight:600, color:"#1e3a4a" }}>Foto carnet</div>
+                <div style={{ background:"#fff8e1", border:"1.5px solid #f0c040", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#7a5c00" }}>
+                  📸 Sacate una foto de frente, cara y hombros, fondo claro.
+                </div>
+                <div style={{ display:"flex", justifyContent:"center" }}>
+                  <label style={{ display:"flex", background: fotoCarnet ? "#e8f5ee" : "#1a1a2e", border:`2px solid ${fotoCarnet ? "#1a6e4a" : "rgba(201,168,76,0.4)"}`, borderRadius:10, width:180, height:240, flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, cursor:"pointer", position:"relative", overflow:"hidden" }}>
+                    {fotoCarnet ? (
+                      <img src={fotoCarnet} alt="carnet" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    ) : (
+                      <>
+                        <div style={{ width:100, height:133, border:"2.5px solid #c9a84c", borderRadius:4, opacity:0.8 }} />
+                        <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, position:"absolute", bottom:10 }}>Tocá para sacar foto</div>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" capture="user" onChange={e => { if(e.target.files[0]) { abrirCropper(e.target.files[0], "carnet"); e.target.value = ""; } }} style={{ display:"none" }} />
+                  </label>
+                </div>
+                {error && <div style={{ color:"#c0392b", fontSize:13 }}>{error}</div>}
+                <button style={{ ...estilos.btn, opacity: loading ? 0.7 : 1 }} onClick={confirmarInscripcion} disabled={loading}>
+                  {loading ? progreso || "Inscribiendo..." : "Confirmar inscripción"}
+                </button>
+                <button style={estilos.btnGris} onClick={() => setPaso(2)}>← Volver</button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

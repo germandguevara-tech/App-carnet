@@ -1,33 +1,32 @@
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
 
+// Accepts a dataURL string (from ImageCropper) or a File/Blob object.
 export async function subirFotoADrive({ archivo, nombreArchivo, torneoNombre, clubNombre }) {
+  if (typeof archivo === "string") {
+    const [header, base64] = archivo.split(",");
+    const mimeType = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+    const response = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ torneoNombre, clubNombre, nombreArchivo, base64, mimeType })
+    });
+    const data = await response.json();
+    if (data.ok) return { url: data.url, id: data.id };
+    throw new Error(data.error);
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const base64 = e.target.result.split(",")[1];
         const mimeType = archivo.type;
-
         const response = await fetch(APPS_SCRIPT_URL, {
           method: "POST",
-          body: JSON.stringify({
-            torneoNombre,
-            clubNombre,
-            nombreArchivo,
-            base64,
-            mimeType
-          })
+          body: JSON.stringify({ torneoNombre, clubNombre, nombreArchivo, base64, mimeType })
         });
-
         const data = await response.json();
-        if (data.ok) {
-          resolve({ url: data.url, id: data.id });
-        } else {
-          reject(new Error(data.error));
-        }
-      } catch(err) {
-        reject(err);
-      }
+        if (data.ok) resolve({ url: data.url, id: data.id });
+        else reject(new Error(data.error));
+      } catch(err) { reject(err); }
     };
     reader.readAsDataURL(archivo);
   });
@@ -37,7 +36,7 @@ export function generarNombreCarnet(apellido, nombre, categoria) {
   const nombreLimpio = `${categoria}-${apellido} ${nombre}`
     .toUpperCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^A-Z0-9\s\-]/g, "")
     .trim();
   return `${nombreLimpio}.jpg`;
@@ -47,7 +46,7 @@ export function generarNombreDniFrente(apellido, nombre, dni) {
   const nombreLimpio = `DNI-F-${apellido} ${nombre}-${dni}`
     .toUpperCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^A-Z0-9\s\-]/g, "")
     .trim();
   return `${nombreLimpio}.jpg`;
@@ -57,7 +56,7 @@ export function generarNombreDniDorso(apellido, nombre, dni) {
   const nombreLimpio = `DNI-D-${apellido} ${nombre}-${dni}`
     .toUpperCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^A-Z0-9\s\-]/g, "")
     .trim();
   return `${nombreLimpio}.jpg`;
