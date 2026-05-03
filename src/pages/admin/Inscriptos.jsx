@@ -154,7 +154,7 @@ export default function Inscriptos() {
   const totalPaginas = Math.ceil(jugadores.length / PORPAGINA);
 
   return (
-    <div style={{ maxWidth:"100%", overflowX:"auto" }}>
+    <div style={{ overflow:"hidden" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.5rem" }}>
         <div style={s.titulo}>👥 Inscriptos</div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
@@ -203,8 +203,19 @@ export default function Inscriptos() {
         </select>
       </div>
 
-      <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflowX:"auto" }}>
-        <table style={{ width:"100%", tableLayout:"auto", borderCollapse:"collapse" }}>
+      <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflow:"hidden" }}>
+        <table style={{ width:"100%", tableLayout:"fixed", borderCollapse:"collapse" }}>
+          <colgroup>
+            <col style={{ width:40 }} />
+            <col style={{ width:60 }} />
+            <col />
+            <col style={{ width:100 }} />
+            <col style={{ width:100 }} />
+            <col style={{ width:90 }} />
+            <col style={{ width:90 }} />
+            <col style={{ width:90 }} />
+            <col style={{ width:80 }} />
+          </colgroup>
           <thead style={{ background:"#f5f0e8" }}>
             <tr>
               <th style={{ ...s.th, width:40, textAlign:"center" }}>
@@ -235,20 +246,20 @@ export default function Inscriptos() {
                     {j.fotoCarnetUrl ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:14 }}>👤</span>}
                   </div>
                 </td>
-                <td style={{ ...s.td, fontWeight:600, whiteSpace:"nowrap" }}>
+                <td style={{ ...s.td, fontWeight:600, wordBreak:"break-word" }}>
                   {duplicados.includes(j.dni) && <span style={{ color:"#c0392b", marginRight:4 }}>⚠️</span>}
                   {j.apellido}, {j.nombre}
                 </td>
-                <td style={s.td}>{j.dni}</td>
-                <td style={s.td}>{j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "—"}</td>
-                <td style={s.td}>{j.categoria}</td>
-                <td style={s.td}>{getNombreClub(j.clubId)}</td>
-                <td style={{ ...s.td, textAlign:"center" }}>
+                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.dni}</td>
+                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "—"}</td>
+                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.categoria}</td>
+                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{getNombreClub(j.clubId)}</td>
+                <td style={{ ...s.td, textAlign:"center", whiteSpace:"nowrap" }}>
                   <span style={{ background: ESTADO_BG[j.estado], color: ESTADO_COLORES[j.estado], borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600 }}>
                     {j.estado}
                   </span>
                 </td>
-                <td style={{ ...s.td, fontSize:11, color:"#8a9eaa", textAlign:"center" }}>
+                <td style={{ ...s.td, fontSize:11, color:"#8a9eaa", textAlign:"center", whiteSpace:"nowrap" }}>
                   {j.creadoEn?.toDate ? j.creadoEn.toDate().toLocaleDateString("es-AR") : ""}
                 </td>
               </tr>
