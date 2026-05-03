@@ -154,7 +154,7 @@ export default function Inscriptos() {
   const totalPaginas = Math.ceil(jugadores.length / PORPAGINA);
 
   return (
-    <div>
+    <div style={{ maxWidth:"100%", overflowX:"auto" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.5rem" }}>
         <div style={s.titulo}>👥 Inscriptos</div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
@@ -203,8 +203,8 @@ export default function Inscriptos() {
         </select>
       </div>
 
-      <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflow:"hidden" }}>
-        <table style={{ width:"100%", borderCollapse:"collapse" }}>
+      <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflowX:"auto" }}>
+        <table style={{ width:"100%", tableLayout:"auto", borderCollapse:"collapse" }}>
           <thead style={{ background:"#f5f0e8" }}>
             <tr>
               <th style={{ ...s.th, width:40, textAlign:"center" }}>
@@ -235,7 +235,7 @@ export default function Inscriptos() {
                     {j.fotoCarnetUrl ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:14 }}>👤</span>}
                   </div>
                 </td>
-                <td style={{ ...s.td, fontWeight:600 }}>
+                <td style={{ ...s.td, fontWeight:600, whiteSpace:"nowrap" }}>
                   {duplicados.includes(j.dni) && <span style={{ color:"#c0392b", marginRight:4 }}>⚠️</span>}
                   {j.apellido}, {j.nombre}
                 </td>
