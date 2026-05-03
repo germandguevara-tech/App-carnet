@@ -66,7 +66,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div style={{ marginLeft:220, flex:1, padding:"2rem" }}>
+      <div style={{ marginLeft:220, flex:1, minWidth:0, overflow:"hidden", padding:"2rem" }}>
         {seccion === "torneos" && <Torneos />}
         {seccion === "clubes" && <Clubes />}
         {seccion === "categorias" && <Categorias />}
