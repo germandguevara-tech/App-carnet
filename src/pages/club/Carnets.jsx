@@ -10,6 +10,7 @@ export default function Carnets({ userData, onVolver }) {
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [loading, setLoading] = useState(true);
   const [carnetsDesactivados, setCarnetsDesactivados] = useState(false);
+  const [clubData, setClubData] = useState(null);
 
   useEffect(() => { cargarJugadores(); }, [userData]);
 
@@ -19,6 +20,7 @@ export default function Carnets({ userData, onVolver }) {
     const snapClub = await getDocs(query(collection(db, "clubes_carnet"), where("uid", "==", userData.clubId)));
     if (!snapClub.empty) {
       const clubInfo = snapClub.docs[0].data();
+      setClubData(clubInfo);
       if (clubInfo.carnetsActivos === false) {
         setJugadores([]);
         setCategorias([]);
@@ -100,7 +102,7 @@ export default function Carnets({ userData, onVolver }) {
             scrollSnapAlign:"center", flexShrink:0,
             width: "calc(100vw - 2.5rem)", maxWidth:320,
           }}>
-            <CarnetCard jugador={j} />
+            <CarnetCard jugador={j} clubData={clubData} />
           </div>
         ))}
       </div>
@@ -114,13 +116,27 @@ export default function Carnets({ userData, onVolver }) {
   );
 }
 
-function CarnetCard({ jugador }) {
+function CarnetCard({ jugador, clubData }) {
   return (
     <div style={{
       background:"white", borderRadius:20, overflow:"hidden",
       boxShadow:"0 8px 32px rgba(0,0,0,0.3)"
     }}>
-      <div style={{ background:"#1e3a4a", padding:"1.25rem 1.25rem 0", display:"flex", justifyContent:"center" }}>
+      <div style={{ background:"#1e3a4a", padding:"10px 1.25rem 0" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:12 }}>
+          {clubData?.logoUrl && (
+            <img
+              src={urlVisualizacion(clubData.logoUrl, 200)}
+              style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}
+            />
+          )}
+          {clubData?.nombre && (
+            <span style={{ color:"rgba(255,255,255,0.85)", fontSize:12, fontWeight:500, letterSpacing:"1px" }}>
+              {clubData.nombre.toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div style={{ display:"flex", justifyContent:"center" }}>
         <div style={{
           width:140, height:187, borderRadius:10, overflow:"hidden",
           border:"3px solid rgba(255,255,255,0.15)", background:"#2e5266",
@@ -135,6 +151,7 @@ function CarnetCard({ jugador }) {
           ) : (
             <span style={{ fontSize:48, opacity:0.3 }}>👤</span>
           )}
+        </div>
         </div>
       </div>
 
