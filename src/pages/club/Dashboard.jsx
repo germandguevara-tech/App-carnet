@@ -4,6 +4,7 @@ import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { urlVisualizacion } from "../../utils/drive";
 import Inscripcion from "./Inscripcion";
 import MisJugadores from "./MisJugadores";
 import Carnets from "./Carnets";
@@ -49,7 +50,11 @@ export default function ClubDashboard() {
       {tab !== "carnets" && (
         <div style={{ background:"#1e3a4a", padding:"1rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:36, height:36, background:"#e8d5a0", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>⚽</div>
+            {clubData?.logoUrl ? (
+              <img src={urlVisualizacion(clubData.logoUrl, 200)} style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+            ) : (
+              <div style={{ width:36, height:36, background:"#e8d5a0", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>⚽</div>
+            )}
             <div>
               <div style={{ color:"white", fontWeight:600, fontSize:15 }}>{clubData?.nombre || "Mi Club"}</div>
               <div style={{ color:"#e8d5a0", fontSize:11 }}>App-Carnet</div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, orderBy, query, where } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { subirFotoADrive, urlVisualizacion } from "../../utils/drive";
 
 const s = {
   titulo: { fontSize:22, fontWeight:600, color:"#1e3a4a", margin:0 },
@@ -14,6 +15,15 @@ const s = {
   th: { padding:"10px 14px", fontSize:11, fontWeight:600, color:"#8a9eaa", textTransform:"uppercase", letterSpacing:"0.6px", textAlign:"left", borderBottom:"1px solid #ede5d5", whiteSpace:"nowrap" },
   td: { padding:"12px 14px", fontSize:13, color:"#1e3a4a", borderBottom:"1px solid #f5f0e8", verticalAlign:"middle" },
 };
+
+function generarNombreLogo(nombre) {
+  return nombre
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Z0-9\s\-]/g, "")
+    .trim() + ".jpg";
+}
 
 function Switch({ value, onChange }) {
   return (
@@ -102,16 +112,82 @@ function ModalUsuarios({ club, onClose, torneos }) {
   );
 }
 
+function ModalEditarLogo({ club, onClose }) {
+  const [archivo, setArchivo] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setArchivo(file);
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+  }
+
+  async function guardar() {
+    if (!archivo) return;
+    setLoading(true);
+    try {
+      const { url } = await subirFotoADrive({
+        archivo,
+        nombreArchivo: generarNombreLogo(club.nombre),
+        torneoNombre: "Logos",
+        clubNombre: "",
+      });
+      await updateDoc(doc(db, "clubes_carnet", club.id), { logoUrl: url });
+      if (preview) URL.revokeObjectURL(preview);
+      onClose();
+    } catch(err) { alert("Error al subir logo: " + err.message); }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ background:"white", borderRadius:16, padding:"2rem", width:"100%", maxWidth:400 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
+          <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>🖼 Logo — {club.nombre}</div>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
+        </div>
+
+        {(preview || club.logoUrl) && (
+          <div style={{ display:"flex", justifyContent:"center", marginBottom:"1.25rem" }}>
+            <img
+              src={preview || urlVisualizacion(club.logoUrl, 200)}
+              style={{ width:80, height:80, borderRadius:"50%", objectFit:"cover", border:"2px solid #ede5d5" }}
+            />
+          </div>
+        )}
+
+        <div style={{ marginBottom:"1.25rem" }}>
+          <label style={s.label}>Seleccionar imagen</label>
+          <input type="file" accept="image/*" onChange={handleFile} style={{ fontSize:13, width:"100%" }} />
+        </div>
+
+        <div style={{ display:"flex", gap:8 }}>
+          <button style={s.btn} onClick={guardar} disabled={!archivo || loading}>
+            {loading ? "Subiendo..." : "Guardar logo"}
+          </button>
+          <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Clubes() {
   const [clubes, setClubes] = useState([]);
   const [torneos, setTorneos] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState({ nombre:"", email:"", password:"", torneoId:"" });
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [torneoFiltro, setTorneoFiltro] = useState("");
   const [modalUsuarios, setModalUsuarios] = useState(null);
+  const [modalLogo, setModalLogo] = useState(null);
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -122,14 +198,35 @@ export default function Clubes() {
     setTorneos(snapT.docs.map(d => ({ id:d.id, ...d.data() })));
   }
 
+  function handleLogoFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoFile(file);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
   async function crearClub() {
     if (!form.nombre || !form.email || !form.password || !form.torneoId) { setError("Completá todos los campos"); return; }
     setLoading(true); setError("");
     try {
       const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      let logoUrl = "";
+      if (logoFile) {
+        const { url } = await subirFotoADrive({
+          archivo: logoFile,
+          nombreArchivo: generarNombreLogo(form.nombre),
+          torneoNombre: "Logos",
+          clubNombre: "",
+        });
+        logoUrl = url;
+      }
       await addDoc(collection(db, "Usuarios"), { email:form.email, Rol:"club", rol:"club", Nombre:form.nombre, uid:cred.user.uid, clubId:cred.user.uid, activo:true });
-      await addDoc(collection(db, "clubes_carnet"), { nombre:form.nombre, email:form.email, torneoId:form.torneoId, uid:cred.user.uid, habilitado:true, permitirGaleria:false, creadoEn:new Date() });
+      await addDoc(collection(db, "clubes_carnet"), { nombre:form.nombre, email:form.email, torneoId:form.torneoId, uid:cred.user.uid, habilitado:true, permitirGaleria:false, creadoEn:new Date(), logoUrl });
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
       setForm({ nombre:"", email:"", password:"", torneoId:"" });
+      setLogoFile(null);
+      setLogoPreview(null);
       setMostrarForm(false);
       await cargarDatos();
     } catch(err) { setError("Error: " + err.message); }
@@ -186,6 +283,17 @@ export default function Clubes() {
               </select>
             </div>
           </div>
+
+          <div style={{ marginBottom:12 }}>
+            <label style={s.label}>Logo del club (opcional)</label>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              {logoPreview && (
+                <img src={logoPreview} style={{ width:48, height:48, borderRadius:"50%", objectFit:"cover", border:"2px solid #ede5d5", flexShrink:0 }} />
+              )}
+              <input type="file" accept="image/*" onChange={handleLogoFile} style={{ fontSize:13 }} />
+            </div>
+          </div>
+
           {error && <div style={{ color:"#c0392b", fontSize:12, marginBottom:8 }}>{error}</div>}
           <div style={{ display:"flex", gap:8 }}>
             <button style={s.btn} onClick={crearClub} disabled={loading}>{loading ? "Creando..." : "Crear club"}</button>
@@ -212,16 +320,26 @@ export default function Clubes() {
               <th style={{ ...s.th, textAlign:"center" }}>Galería</th>
               <th style={{ ...s.th, textAlign:"center" }}>Carnets</th>
               <th style={{ ...s.th, textAlign:"center" }}>Usuarios</th>
+              <th style={{ ...s.th, textAlign:"center" }}>Logo</th>
               <th style={{ ...s.th, textAlign:"center" }}>WhatsApp</th>
             </tr>
           </thead>
           <tbody>
             {clubesFiltrados.length === 0 && (
-              <tr><td colSpan={7} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No se encontraron clubes.</td></tr>
+              <tr><td colSpan={8} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No se encontraron clubes.</td></tr>
             )}
             {clubesFiltrados.map(c => (
               <tr key={c.id}>
-                <td style={{ ...s.td, fontWeight:600 }}>{c.nombre}</td>
+                <td style={{ ...s.td, fontWeight:600 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    {c.logoUrl ? (
+                      <img src={urlVisualizacion(c.logoUrl, 80)} style={{ width:28, height:28, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+                    ) : (
+                      <div style={{ width:28, height:28, borderRadius:"50%", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>🏟️</div>
+                    )}
+                    {c.nombre}
+                  </div>
+                </td>
                 <td style={s.td}>{getNombreTorneo(c.torneoId)}</td>
                 <td style={{ ...s.td, textAlign:"center" }}>
                   <div style={{ display:"flex", justifyContent:"center" }}>
@@ -242,6 +360,9 @@ export default function Clubes() {
                   <button style={s.btnSm("#1e3a4a")} onClick={() => setModalUsuarios(c)}>👤 Usuarios</button>
                 </td>
                 <td style={{ ...s.td, textAlign:"center" }}>
+                  <button style={s.btnSm("#4a6070")} onClick={() => setModalLogo(c)}>🖼 Editar</button>
+                </td>
+                <td style={{ ...s.td, textAlign:"center" }}>
                   <button onClick={() => enviarWhatsapp(c)} style={{ background:"#25D366", color:"white", border:"none", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>
                     📲 Enviar
                   </button>
@@ -257,6 +378,13 @@ export default function Clubes() {
           club={modalUsuarios}
           torneos={torneos}
           onClose={() => { setModalUsuarios(null); cargarDatos(); }}
+        />
+      )}
+
+      {modalLogo && (
+        <ModalEditarLogo
+          club={modalLogo}
+          onClose={() => { setModalLogo(null); cargarDatos(); }}
         />
       )}
     </div>
