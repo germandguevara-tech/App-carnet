@@ -38,6 +38,7 @@ export default function Inscriptos() {
   const [editando, setEditando] = useState(false);
   const [datosEdit, setDatosEdit] = useState({});
   const [duplicados, setDuplicados] = useState([]);
+  const [duplicadosInfo, setDuplicadosInfo] = useState({});
   const [orden, setOrden] = useState("desc");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [categorias, setCategorias] = useState([]);
@@ -64,23 +65,33 @@ export default function Inscriptos() {
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), orderBy("creadoEn", "desc")));
     let lista = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-    let listaTorneo = lista.filter(j => j.torneoId === torneoFiltro);
+    const listaTorneo = lista.filter(j => j.torneoId === torneoFiltro);
     const cats = [...new Set(listaTorneo.map(j => j.categoria).filter(Boolean))].sort();
     setCategorias(cats);
 
+    // Detección de duplicados: mismo DNI, distinto club, ignorando inactivos
     const dniCount = {};
-    lista.forEach(j => {
-      if (j.torneoId === torneoFiltro) {
-        dniCount[j.dni] = (dniCount[j.dni] || []);
+    listaTorneo.forEach(j => {
+      if (j.estado !== "inactivo") {
+        if (!dniCount[j.dni]) dniCount[j.dni] = [];
         dniCount[j.dni].push(j.clubId);
       }
     });
-    const dnisDuplicados = Object.keys(dniCount).filter(dni => new Set(dniCount[dni]).size > 1);
-    setDuplicados(dnisDuplicados);
+    const dupInfo = {};
+    Object.entries(dniCount).forEach(([dni, clubIds]) => {
+      const unicos = [...new Set(clubIds)];
+      if (unicos.length > 1) dupInfo[dni] = unicos;
+    });
+    setDuplicados(Object.keys(dupInfo));
+    setDuplicadosInfo(dupInfo);
 
-    if (torneoFiltro) lista = lista.filter(j => j.torneoId === torneoFiltro);
-    if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
-    if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
+    lista = listaTorneo.slice();
+    if (estadoFiltro === "duplicado_entre_clubes") {
+      lista = lista.filter(j => dupInfo[j.dni]);
+    } else {
+      if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
+      if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
+    }
     if (categoriaFiltro) lista = lista.filter(j => j.categoria === categoriaFiltro);
     lista = lista.sort((a, b) => {
       const fechaA = a.creadoEn?.toDate ? a.creadoEn.toDate() : new Date(a.creadoEn || 0);
@@ -134,8 +145,12 @@ export default function Inscriptos() {
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), orderBy("creadoEn", "desc")));
     let lista = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     if (torneoFiltro) lista = lista.filter(j => j.torneoId === torneoFiltro);
-    if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
-    if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
+    if (estadoFiltro === "duplicado_entre_clubes") {
+      lista = lista.filter(j => duplicados.includes(j.dni));
+    } else {
+      if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
+      if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
+    }
     if (categoriaFiltro) lista = lista.filter(j => j.categoria === categoriaFiltro);
     if (seleccionados.length > 0) lista = lista.filter(j => seleccionados.includes(j.id));
     const listaConNombres = lista.map(j => {
@@ -192,6 +207,7 @@ export default function Inscriptos() {
           <option value="baja_solicitada">Baja solicitada</option>
           <option value="inactivo">Inactivo</option>
           <option value="reactivacion_solicitada">Reactivación</option>
+          <option value="duplicado_entre_clubes">⚠️ Duplicado entre clubes</option>
         </select>
         <select style={{ ...s.select, flex:1, minWidth:110 }} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
           <option value="">Todas las cat.</option>
@@ -247,7 +263,12 @@ export default function Inscriptos() {
                   </div>
                 </td>
                 <td style={{ ...s.td, fontWeight:600, wordBreak:"break-word" }}>
-                  {duplicados.includes(j.dni) && <span style={{ color:"#c0392b", marginRight:4 }}>⚠️</span>}
+                  {duplicados.includes(j.dni) && (
+                    <span
+                      title={`También en: ${(duplicadosInfo[j.dni] || []).filter(cid => cid !== j.clubId).map(cid => getNombreClub(cid)).join(", ")}`}
+                      style={{ color:"#c0392b", marginRight:4, cursor:"help" }}
+                    >⚠️</span>
+                  )}
                   {j.apellido}, {j.nombre}
                 </td>
                 <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.dni}</td>
