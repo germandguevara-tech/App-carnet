@@ -165,7 +165,14 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
   const [exito, setExito] = useState(false);
   const [cropperSrc, setCropperSrc] = useState(null);
   const [cropperTarget, setCropperTarget] = useState(null); // "frente" | "dorso" | "carnet"
+  const [mostrarInstrucciones, setMostrarInstrucciones] = useState(() => !localStorage.getItem("instrucciones_vistas"));
+  const [noMostrarDenuevo, setNoMostrarDenuevo] = useState(false);
   const permitirGaleria = clubData?.permitirGaleria || false;
+
+  function cerrarModalInstrucciones() {
+    if (noMostrarDenuevo) localStorage.setItem("instrucciones_vistas", "1");
+    setMostrarInstrucciones(false);
+  }
 
   useEffect(() => { cargarCategorias(); }, [clubData]);
   useEffect(() => {
@@ -360,6 +367,23 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
 
   return (
     <div>
+      {mostrarInstrucciones && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000, padding:"5vh 5vw", boxSizing:"border-box" }}>
+          <div style={{ background:"#1a2f4a", borderRadius:16, width:"100%", height:"100%", display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
+            <button onClick={cerrarModalInstrucciones} style={{ position:"absolute", top:10, right:12, background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:28, cursor:"pointer", zIndex:1, lineHeight:1 }}>×</button>
+            <div style={{ flex:1, overflowY:"auto" }}>
+              <img src="/instrucciones-inscripcion.png" style={{ width:"100%", objectFit:"contain", display:"block" }} />
+            </div>
+            <div style={{ padding:"12px 16px 16px", background:"#1a2f4a" }}>
+              <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, cursor:"pointer" }}>
+                <input type="checkbox" checked={noMostrarDenuevo} onChange={e => setNoMostrarDenuevo(e.target.checked)} />
+                <span style={{ color:"rgba(255,255,255,0.7)", fontSize:13 }}>No mostrar de nuevo</span>
+              </label>
+              <button onClick={cerrarModalInstrucciones} style={{ width:"100%", background:"#c9a84c", color:"#1e3a4a", border:"none", borderRadius:12, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", letterSpacing:"0.5px" }}>EMPEZAR INSCRIPCIÓN</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:"1.25rem" }}>
         <button onClick={onVolver} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#1e3a4a" }}>←</button>
         <div style={{ fontSize:18, fontWeight:600, color:"#1e3a4a" }}>Inscribir jugador</div>

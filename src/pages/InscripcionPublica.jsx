@@ -128,6 +128,13 @@ export default function InscripcionPublica() {
   const [inscripcionCerrada, setInscripcionCerrada] = useState(false);
   const [cropperSrc, setCropperSrc] = useState(null);
   const [cropperTarget, setCropperTarget] = useState(null); // "frente" | "dorso" | "carnet"
+  const [mostrarInstrucciones, setMostrarInstrucciones] = useState(() => !localStorage.getItem("instrucciones_vistas"));
+  const [noMostrarDenuevo, setNoMostrarDenuevo] = useState(false);
+
+  function cerrarModalInstrucciones() {
+    if (noMostrarDenuevo) localStorage.setItem("instrucciones_vistas", "1");
+    setMostrarInstrucciones(false);
+  }
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -292,6 +299,23 @@ export default function InscripcionPublica() {
 
   return (
     <div style={{ minHeight:"100vh", background:"#f5f0e8", fontFamily:"sans-serif" }}>
+      {mostrarInstrucciones && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000, padding:"5vh 5vw", boxSizing:"border-box" }}>
+          <div style={{ background:"#1a2f4a", borderRadius:16, width:"100%", height:"100%", display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
+            <button onClick={cerrarModalInstrucciones} style={{ position:"absolute", top:10, right:12, background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:28, cursor:"pointer", zIndex:1, lineHeight:1 }}>×</button>
+            <div style={{ flex:1, overflowY:"auto" }}>
+              <img src="/instrucciones-inscripcion.png" style={{ width:"100%", objectFit:"contain", display:"block" }} />
+            </div>
+            <div style={{ padding:"12px 16px 16px", background:"#1a2f4a" }}>
+              <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, cursor:"pointer" }}>
+                <input type="checkbox" checked={noMostrarDenuevo} onChange={e => setNoMostrarDenuevo(e.target.checked)} />
+                <span style={{ color:"rgba(255,255,255,0.7)", fontSize:13 }}>No mostrar de nuevo</span>
+              </label>
+              <button onClick={cerrarModalInstrucciones} style={{ width:"100%", background:"#c9a84c", color:"#1e3a4a", border:"none", borderRadius:12, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", letterSpacing:"0.5px" }}>EMPEZAR INSCRIPCIÓN</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ background:"#1e3a4a", padding:"1rem 1.25rem", display:"flex", alignItems:"center", gap:10 }}>
         <div style={{ width:36, height:36, background:"#e8d5a0", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>⚽</div>
         <div>
