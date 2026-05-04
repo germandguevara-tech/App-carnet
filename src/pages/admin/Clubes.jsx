@@ -112,79 +112,37 @@ function ModalUsuarios({ club, onClose, torneos }) {
   );
 }
 
-function ModalEditarLogo({ club, onClose }) {
+function ModalEditarClub({ club, onClose }) {
+  const [nombre, setNombre] = useState(club.nombre);
   const [archivo, setArchivo] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     setArchivo(file);
-    const url = URL.createObjectURL(file);
-    setPreview(url);
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(URL.createObjectURL(file));
   }
-
-  async function guardar() {
-    if (!archivo) return;
-    setLoading(true);
-    try {
-      const { url } = await subirFotoADrive({
-        archivo,
-        nombreArchivo: generarNombreLogo(club.nombre),
-        torneoNombre: "Logos",
-        clubNombre: "",
-      });
-      await updateDoc(doc(db, "clubes_carnet", club.id), { logoUrl: url });
-      if (preview) URL.revokeObjectURL(preview);
-      onClose();
-    } catch(err) { alert("Error al subir logo: " + err.message); }
-    setLoading(false);
-  }
-
-  return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
-      <div style={{ background:"white", borderRadius:16, padding:"2rem", width:"100%", maxWidth:400 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
-          <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>🖼 Logo — {club.nombre}</div>
-          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
-        </div>
-
-        {(preview || club.logoUrl) && (
-          <div style={{ display:"flex", justifyContent:"center", marginBottom:"1.25rem" }}>
-            <img
-              src={preview || urlVisualizacion(club.logoUrl, 200)}
-              style={{ width:80, height:80, borderRadius:"50%", objectFit:"cover", border:"2px solid #ede5d5" }}
-            />
-          </div>
-        )}
-
-        <div style={{ marginBottom:"1.25rem" }}>
-          <label style={s.label}>Seleccionar imagen</label>
-          <input type="file" accept="image/*" onChange={handleFile} style={{ fontSize:13, width:"100%" }} />
-        </div>
-
-        <div style={{ display:"flex", gap:8 }}>
-          <button style={s.btn} onClick={guardar} disabled={!archivo || loading}>
-            {loading ? "Subiendo..." : "Guardar logo"}
-          </button>
-          <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={onClose}>Cancelar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ModalEditarClub({ club, onClose }) {
-  const [nombre, setNombre] = useState(club.nombre);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   async function guardar() {
     if (!nombre.trim()) { setError("El nombre no puede estar vacío"); return; }
     setLoading(true);
     try {
-      await updateDoc(doc(db, "clubes_carnet", club.id), { nombre: nombre.trim() });
+      const updates = { nombre: nombre.trim() };
+      if (archivo) {
+        const { url } = await subirFotoADrive({
+          archivo,
+          nombreArchivo: generarNombreLogo(nombre.trim()),
+          torneoNombre: "Logos",
+          clubNombre: "",
+        });
+        updates.logoUrl = url;
+      }
+      await updateDoc(doc(db, "clubes_carnet", club.id), updates);
+      if (preview) URL.revokeObjectURL(preview);
       onClose();
     } catch(err) { setError("Error: " + err.message); }
     setLoading(false);
@@ -197,6 +155,7 @@ function ModalEditarClub({ club, onClose }) {
           <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>✏️ Editar club</div>
           <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
         </div>
+
         <div style={{ marginBottom:"1.25rem" }}>
           <label style={s.label}>Nombre del club</label>
           <input
@@ -205,8 +164,22 @@ function ModalEditarClub({ club, onClose }) {
             onChange={e => { setNombre(e.target.value); setError(""); }}
             placeholder="Nombre del club"
           />
-          {error && <div style={{ color:"#c0392b", fontSize:12, marginTop:6 }}>{error}</div>}
         </div>
+
+        <div style={{ marginBottom:"1.25rem" }}>
+          <label style={s.label}>Logo del club</label>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            {(preview || club.logoUrl) && (
+              <img
+                src={preview || urlVisualizacion(club.logoUrl, 200)}
+                style={{ width:48, height:48, borderRadius:"50%", objectFit:"cover", border:"2px solid #ede5d5", flexShrink:0 }}
+              />
+            )}
+            <input type="file" accept="image/*" onChange={handleFile} style={{ fontSize:13 }} />
+          </div>
+        </div>
+
+        {error && <div style={{ color:"#c0392b", fontSize:12, marginBottom:10 }}>{error}</div>}
         <div style={{ display:"flex", gap:8 }}>
           <button style={s.btn} onClick={guardar} disabled={loading}>
             {loading ? "Guardando..." : "Guardar"}
@@ -230,7 +203,6 @@ export default function Clubes() {
   const [busqueda, setBusqueda] = useState("");
   const [torneoFiltro, setTorneoFiltro] = useState("");
   const [modalUsuarios, setModalUsuarios] = useState(null);
-  const [modalLogo, setModalLogo] = useState(null);
   const [modalEditar, setModalEditar] = useState(null);
 
   useEffect(() => { cargarDatos(); }, []);
@@ -364,22 +336,21 @@ export default function Clubes() {
               <th style={{ ...s.th, textAlign:"center" }}>Galería</th>
               <th style={{ ...s.th, textAlign:"center" }}>Carnets</th>
               <th style={{ ...s.th, textAlign:"center" }}>Usuarios</th>
-              <th style={{ ...s.th, textAlign:"center" }}>Logo</th>
               <th style={{ ...s.th, textAlign:"center" }}>WhatsApp</th>
             </tr>
           </thead>
           <tbody>
             {clubesFiltrados.length === 0 && (
-              <tr><td colSpan={8} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No se encontraron clubes.</td></tr>
+              <tr><td colSpan={7} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No se encontraron clubes.</td></tr>
             )}
             {clubesFiltrados.map(c => (
               <tr key={c.id}>
                 <td style={{ ...s.td, fontWeight:600 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     {c.logoUrl ? (
-                      <img src={urlVisualizacion(c.logoUrl, 80)} style={{ width:28, height:28, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+                      <img src={urlVisualizacion(c.logoUrl, 80)} style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                     ) : (
-                      <div style={{ width:28, height:28, borderRadius:"50%", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>🏟️</div>
+                      <div style={{ width:32, height:32, borderRadius:"50%", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>🏟️</div>
                     )}
                     {c.nombre}
                     <button
@@ -409,9 +380,6 @@ export default function Clubes() {
                   <button style={s.btnSm("#1e3a4a")} onClick={() => setModalUsuarios(c)}>👤 Usuarios</button>
                 </td>
                 <td style={{ ...s.td, textAlign:"center" }}>
-                  <button style={s.btnSm("#4a6070")} onClick={() => setModalLogo(c)}>🖼 Editar</button>
-                </td>
-                <td style={{ ...s.td, textAlign:"center" }}>
                   <button onClick={() => enviarWhatsapp(c)} style={{ background:"#25D366", color:"white", border:"none", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>
                     📲 Enviar
                   </button>
@@ -427,13 +395,6 @@ export default function Clubes() {
           club={modalUsuarios}
           torneos={torneos}
           onClose={() => { setModalUsuarios(null); cargarDatos(); }}
-        />
-      )}
-
-      {modalLogo && (
-        <ModalEditarLogo
-          club={modalLogo}
-          onClose={() => { setModalLogo(null); cargarDatos(); }}
         />
       )}
 
