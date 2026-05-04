@@ -175,6 +175,49 @@ function ModalEditarLogo({ club, onClose }) {
   );
 }
 
+function ModalEditarClub({ club, onClose }) {
+  const [nombre, setNombre] = useState(club.nombre);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function guardar() {
+    if (!nombre.trim()) { setError("El nombre no puede estar vacío"); return; }
+    setLoading(true);
+    try {
+      await updateDoc(doc(db, "clubes_carnet", club.id), { nombre: nombre.trim() });
+      onClose();
+    } catch(err) { setError("Error: " + err.message); }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ background:"white", borderRadius:16, padding:"2rem", width:"100%", maxWidth:400 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
+          <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>✏️ Editar club</div>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
+        </div>
+        <div style={{ marginBottom:"1.25rem" }}>
+          <label style={s.label}>Nombre del club</label>
+          <input
+            style={s.input}
+            value={nombre}
+            onChange={e => { setNombre(e.target.value); setError(""); }}
+            placeholder="Nombre del club"
+          />
+          {error && <div style={{ color:"#c0392b", fontSize:12, marginTop:6 }}>{error}</div>}
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <button style={s.btn} onClick={guardar} disabled={loading}>
+            {loading ? "Guardando..." : "Guardar"}
+          </button>
+          <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Clubes() {
   const [clubes, setClubes] = useState([]);
   const [torneos, setTorneos] = useState([]);
@@ -188,6 +231,7 @@ export default function Clubes() {
   const [torneoFiltro, setTorneoFiltro] = useState("");
   const [modalUsuarios, setModalUsuarios] = useState(null);
   const [modalLogo, setModalLogo] = useState(null);
+  const [modalEditar, setModalEditar] = useState(null);
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -338,6 +382,11 @@ export default function Clubes() {
                       <div style={{ width:28, height:28, borderRadius:"50%", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>🏟️</div>
                     )}
                     {c.nombre}
+                    <button
+                      onClick={() => setModalEditar(c)}
+                      title="Editar nombre"
+                      style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, color:"#8a9eaa", padding:"2px 4px", lineHeight:1 }}
+                    >✏️</button>
                   </div>
                 </td>
                 <td style={s.td}>{getNombreTorneo(c.torneoId)}</td>
@@ -385,6 +434,13 @@ export default function Clubes() {
         <ModalEditarLogo
           club={modalLogo}
           onClose={() => { setModalLogo(null); cargarDatos(); }}
+        />
+      )}
+
+      {modalEditar && (
+        <ModalEditarClub
+          club={modalEditar}
+          onClose={() => { setModalEditar(null); cargarDatos(); }}
         />
       )}
     </div>
