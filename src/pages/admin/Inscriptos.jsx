@@ -287,9 +287,9 @@ export default function Inscriptos() {
             {loading && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</td></tr>}
             {!loading && jugadores.length === 0 && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</td></tr>}
             {jugadoresPaginados.map(j => (
-              <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer" }}
+              <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer", background: fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white" }}
                 onMouseEnter={e => e.currentTarget.style.background="#f9f7f4"}
-                onMouseLeave={e => e.currentTarget.style.background="white"}>
+                onMouseLeave={e => e.currentTarget.style.background=fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white"}>
                 <td style={{ ...s.td, textAlign:"center" }} onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccion(j.id)} />
                 </td>
@@ -306,11 +306,6 @@ export default function Inscriptos() {
                     >⚠️</span>
                   )}
                   {j.apellido}, {j.nombre}
-                  {fueraCategoriaIds.includes(j.id) && (
-                    <span style={{ display:"inline-block", background:"#fdecea", color:"#c0392b", border:"1px solid #f5c6c6", borderRadius:4, padding:"1px 6px", fontSize:10, fontWeight:700, marginLeft:6, whiteSpace:"nowrap" }}>
-                      ⚠️ Fuera de cat.
-                    </span>
-                  )}
                 </td>
                 <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.dni}</td>
                 <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "—"}</td>
