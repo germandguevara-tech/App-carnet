@@ -17,7 +17,7 @@ const s = {
 export default function Categorias() {
   const [categorias, setCategorias] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [form, setForm] = useState({ nombre:"", anioNacDesde:"", anioNacHasta:"", tipo:"jugador" });
+  const [form, setForm] = useState({ nombre:"", tipo:"jugador" });
   const [editando, setEditando] = useState(null);
   const [formEdit, setFormEdit] = useState({});
   const [loading, setLoading] = useState(false);
@@ -34,11 +34,9 @@ export default function Categorias() {
     setLoading(true);
     await addDoc(collection(db, "categorias_carnet"), {
       nombre: form.nombre,
-      anioNacDesde: form.anioNacDesde || "",
-      anioNacHasta: form.anioNacHasta || "",
       tipo: form.tipo || "jugador",
     });
-    setForm({ nombre:"", anioNacDesde:"", anioNacHasta:"", tipo:"jugador" });
+    setForm({ nombre:"", tipo:"jugador" });
     setMostrarForm(false);
     await cargarCategorias();
     setLoading(false);
@@ -46,14 +44,12 @@ export default function Categorias() {
 
   function iniciarEdicion(c) {
     setEditando(c.id);
-    setFormEdit({ nombre:c.nombre, anioNacDesde:c.anioNacDesde||"", anioNacHasta:c.anioNacHasta||"", tipo:c.tipo||"jugador" });
+    setFormEdit({ nombre:c.nombre, tipo:c.tipo||"jugador" });
   }
 
   async function guardarEdicion(id) {
     await updateDoc(doc(db, "categorias_carnet", id), {
       nombre: formEdit.nombre,
-      anioNacDesde: formEdit.anioNacDesde || "",
-      anioNacHasta: formEdit.anioNacHasta || "",
       tipo: formEdit.tipo || "jugador",
     });
     setEditando(null);
@@ -75,18 +71,10 @@ export default function Categorias() {
 
       {mostrarForm && (
         <div style={s.card}>
-          <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr", gap:12, marginBottom:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:12, marginBottom:12 }}>
             <div>
               <label style={s.label}>Nombre</label>
               <input style={s.input} value={form.nombre} onChange={e => setForm({...form, nombre:e.target.value})} placeholder="Ej: Sub-13, Primera, Adultos" />
-            </div>
-            <div>
-              <label style={s.label}>Año nac. desde</label>
-              <input type="number" style={s.input} value={form.anioNacDesde} onChange={e => setForm({...form, anioNacDesde:e.target.value})} placeholder="Ej: 2011" />
-            </div>
-            <div>
-              <label style={s.label}>Año nac. hasta</label>
-              <input type="number" style={s.input} value={form.anioNacHasta} onChange={e => setForm({...form, anioNacHasta:e.target.value})} placeholder="Ej: 2013" />
             </div>
             <div>
               <label style={s.label}>Tipo</label>
@@ -109,14 +97,12 @@ export default function Categorias() {
             <tr>
               <th style={s.th}>Categoría</th>
               <th style={s.th}>Tipo</th>
-              <th style={s.th}>Año nac. desde</th>
-              <th style={s.th}>Año nac. hasta</th>
               <th style={{ ...s.th, textAlign:"center" }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {categorias.length === 0 && (
-              <tr><td colSpan={5} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay categorías creadas todavía.</td></tr>
+              <tr><td colSpan={3} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay categorías creadas todavía.</td></tr>
             )}
             {categorias.map(c => (
               <tr key={c.id}>
@@ -129,8 +115,6 @@ export default function Categorias() {
                         <option value="directivo">Directivo</option>
                       </select>
                     </td>
-                    <td style={s.td}><input type="number" style={s.inputInline} value={formEdit.anioNacDesde} onChange={e => setFormEdit({...formEdit, anioNacDesde:e.target.value})} placeholder="Ej: 2011" /></td>
-                    <td style={s.td}><input type="number" style={s.inputInline} value={formEdit.anioNacHasta} onChange={e => setFormEdit({...formEdit, anioNacHasta:e.target.value})} placeholder="Ej: 2013" /></td>
                     <td style={{ ...s.td, textAlign:"center" }}>
                       <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
                         <button style={s.btnSm("#1a6e4a")} onClick={() => guardarEdicion(c.id)}>Guardar</button>
@@ -146,8 +130,6 @@ export default function Categorias() {
                         {c.tipo === "directivo" ? "Directivo" : "Jugador"}
                       </span>
                     </td>
-                    <td style={s.td}>{c.anioNacDesde || "—"}</td>
-                    <td style={s.td}>{c.anioNacHasta || "—"}</td>
                     <td style={{ ...s.td, textAlign:"center" }}>
                       <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
                         <button style={s.btnSm("#c9a84c")} onClick={() => iniciarEdicion(c)}>Editar</button>

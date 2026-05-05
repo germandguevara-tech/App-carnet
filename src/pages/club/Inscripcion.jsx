@@ -194,8 +194,9 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
     if (!snapTorneo.empty) {
       const torneoData = snapTorneo.docs[0].data();
       clubData.torneoNombre = torneoData.nombre;
-      const ids = torneoData.categorias || [];
-      if (ids.length > 0) {
+      const catItems = torneoData.categorias || [];
+      if (catItems.length > 0) {
+        const ids = catItems.map(c => typeof c === "string" ? c : c.id);
         const snapCats = await getDocs(collection(db, "categorias_carnet"));
         const todas = snapCats.docs.map(d => ({ id:d.id, ...d.data() }));
         setCategorias(todas.filter(c => ids.includes(c.id)));

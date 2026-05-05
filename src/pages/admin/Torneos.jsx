@@ -7,6 +7,7 @@ const s = {
   btn: { background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:600, cursor:"pointer" },
   btnSm: (color) => ({ background:color, color:"white", border:"none", borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }),
   input: { width:"100%", padding:"9px 12px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", boxSizing:"border-box" },
+  inputSm: { padding:"4px 8px", border:"1.5px solid #ede5d5", borderRadius:6, fontSize:12, outline:"none", boxSizing:"border-box" },
   inputInline: { padding:"6px 10px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:12, outline:"none", width:"100%" },
   label: { fontSize:11, color:"#4a6070", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", display:"block", marginBottom:4 },
   card: { background:"white", borderRadius:12, padding:"1.25rem 1.5rem", border:"1px solid #ede5d5", marginBottom:"1rem" },
@@ -22,12 +23,25 @@ export default function Torneos() {
   const [categorias, setCategorias] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState({ nombre:"", fechaInicioInscripcion:"", fechaCierreInscripcion:"", temporada:"" });
+  // categoriasSeleccionadas: [{id, anioNacDesde, anioNacHasta}]
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [catSelect, setCatSelect] = useState("");
   const [loading, setLoading] = useState(false);
   const [editando, setEditando] = useState(null);
   const [formEdit, setFormEdit] = useState({});
   const [catEditSelect, setCatEditSelect] = useState("");
+
+  // Create form: pending category awaiting range input
+  const [pendingCatId, setPendingCatId] = useState(null);
+  const [pendingRangos, setPendingRangos] = useState({ anioNacDesde:"", anioNacHasta:"" });
+  const [editandoChipIdx, setEditandoChipIdx] = useState(null);
+  const [editandoChipRangos, setEditandoChipRangos] = useState({ anioNacDesde:"", anioNacHasta:"" });
+
+  // Edit form: pending category
+  const [pendingCatEditId, setPendingCatEditId] = useState(null);
+  const [pendingRangosEdit, setPendingRangosEdit] = useState({ anioNacDesde:"", anioNacHasta:"" });
+  const [editandoChipEditIdx, setEditandoChipEditIdx] = useState(null);
+  const [editandoChipEditRangos, setEditandoChipEditRangos] = useState({ anioNacDesde:"", anioNacHasta:"" });
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -39,24 +53,50 @@ export default function Torneos() {
     setCategorias(snapCat.docs.map(d => ({ id:d.id, ...d.data() })));
   }
 
+  function getNombreCategoria(id) {
+    return categorias.find(c => c.id === id)?.nombre || id;
+  }
+
+  function getChipLabel(cat) {
+    const nombre = getNombreCategoria(cat.id);
+    if (cat.anioNacDesde || cat.anioNacHasta) {
+      return `${nombre} (${cat.anioNacDesde||"?"}–${cat.anioNacHasta||"?"})`;
+    }
+    return nombre;
+  }
+
+  // --- Create form category management ---
   function agregarCategoria() {
-    if (!catSelect || categoriasSeleccionadas.includes(catSelect)) return;
-    setCategoriasSeleccionadas(prev => [...prev, catSelect]);
+    if (!catSelect || categoriasSeleccionadas.some(c => c.id === catSelect)) return;
+    setPendingCatId(catSelect);
+    setPendingRangos({ anioNacDesde:"", anioNacHasta:"" });
     setCatSelect("");
   }
 
-  function quitarCategoria(id) {
-    setCategoriasSeleccionadas(prev => prev.filter(c => c !== id));
+  function confirmarAgregarCategoria() {
+    setCategoriasSeleccionadas(prev => [...prev, { id:pendingCatId, anioNacDesde:pendingRangos.anioNacDesde, anioNacHasta:pendingRangos.anioNacHasta }]);
+    setPendingCatId(null);
   }
 
+  function quitarCategoria(id) {
+    setCategoriasSeleccionadas(prev => prev.filter(c => c.id !== id));
+  }
+
+  // --- Edit form category management ---
   function agregarCategoriaEdit() {
-    if (!catEditSelect || formEdit.categorias?.includes(catEditSelect)) return;
-    setFormEdit(prev => ({ ...prev, categorias: [...(prev.categorias||[]), catEditSelect] }));
+    if (!catEditSelect || (formEdit.categorias||[]).some(c => c.id === catEditSelect)) return;
+    setPendingCatEditId(catEditSelect);
+    setPendingRangosEdit({ anioNacDesde:"", anioNacHasta:"" });
     setCatEditSelect("");
   }
 
+  function confirmarAgregarCategoriaEdit() {
+    setFormEdit(prev => ({ ...prev, categorias: [...(prev.categorias||[]), { id:pendingCatEditId, anioNacDesde:pendingRangosEdit.anioNacDesde, anioNacHasta:pendingRangosEdit.anioNacHasta }] }));
+    setPendingCatEditId(null);
+  }
+
   function quitarCategoriaEdit(id) {
-    setFormEdit(prev => ({ ...prev, categorias: prev.categorias.filter(c => c !== id) }));
+    setFormEdit(prev => ({ ...prev, categorias: (prev.categorias||[]).filter(c => c.id !== id) }));
   }
 
   async function crearTorneo() {
@@ -68,6 +108,8 @@ export default function Torneos() {
     setForm({ nombre:"", fechaInicioInscripcion:"", fechaCierreInscripcion:"", temporada:"" });
     setCategoriasSeleccionadas([]);
     setCatSelect("");
+    setPendingCatId(null);
+    setEditandoChipIdx(null);
     setMostrarForm(false);
     await cargarDatos();
     setLoading(false);
@@ -80,8 +122,14 @@ export default function Torneos() {
 
   function iniciarEdicion(t) {
     setEditando(t.id);
-    setFormEdit({ nombre:t.nombre, temporada:t.temporada||"", fechaInicioInscripcion:t.fechaInicioInscripcion, fechaCierreInscripcion:t.fechaCierreInscripcion, categorias:t.categorias||[] });
+    // Migration: convert old string[] format to object[] format
+    const cats = (t.categorias || []).map(c =>
+      typeof c === "string" ? { id:c, anioNacDesde:"", anioNacHasta:"" } : c
+    );
+    setFormEdit({ nombre:t.nombre, temporada:t.temporada||"", fechaInicioInscripcion:t.fechaInicioInscripcion, fechaCierreInscripcion:t.fechaCierreInscripcion, categorias:cats });
     setCatEditSelect("");
+    setPendingCatEditId(null);
+    setEditandoChipEditIdx(null);
   }
 
   async function guardarEdicion(id) {
@@ -107,23 +155,14 @@ export default function Torneos() {
     await cargarDatos();
   }
 
-  function getNombreCategoria(id) {
-    return categorias.find(c => c.id === id)?.nombre || id;
-  }
-
-  function getNombreCategorias(ids) {
-    if (!ids || ids.length === 0) return "—";
-    return ids.map(id => getNombreCategoria(id)).join(", ");
-  }
-
-  const catDisponibles = categorias.filter(c => !categoriasSeleccionadas.includes(c.id));
-  const catDisponiblesEdit = categorias.filter(c => !(formEdit.categorias||[]).includes(c.id));
+  const catDisponibles = categorias.filter(c => !categoriasSeleccionadas.some(s => s.id === c.id));
+  const catDisponiblesEdit = categorias.filter(c => !(formEdit.categorias||[]).some(s => s.id === c.id));
 
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.5rem" }}>
         <div style={s.titulo}>🏆 Torneos</div>
-        <button style={s.btn} onClick={() => setMostrarForm(!mostrarForm)}>+ Nuevo torneo</button>
+        <button style={s.btn} onClick={() => { setMostrarForm(!mostrarForm); setPendingCatId(null); setEditandoChipIdx(null); }}>+ Nuevo torneo</button>
       </div>
 
       {mostrarForm && (
@@ -154,22 +193,50 @@ export default function Torneos() {
                 <option value="">— Seleccioná categoría —</option>
                 {catDisponibles.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
-              <button style={s.btn} onClick={agregarCategoria}>Agregar</button>
+              <button style={s.btn} onClick={agregarCategoria} disabled={!catSelect}>Agregar</button>
             </div>
+
+            {pendingCatId && (
+              <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", background:"#fffdf5", border:"1px solid #e8d5a0", borderRadius:8, padding:"8px 12px", marginBottom:8 }}>
+                <span style={{ fontSize:12, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(pendingCatId)}</span>
+                <span style={{ fontSize:12, color:"#8a9eaa" }}>Año nac. desde:</span>
+                <input type="number" style={{ ...s.inputSm, width:80 }} value={pendingRangos.anioNacDesde} onChange={e => setPendingRangos({...pendingRangos, anioNacDesde:e.target.value})} placeholder="2008" />
+                <span style={{ fontSize:12, color:"#8a9eaa" }}>hasta:</span>
+                <input type="number" style={{ ...s.inputSm, width:80 }} value={pendingRangos.anioNacHasta} onChange={e => setPendingRangos({...pendingRangos, anioNacHasta:e.target.value})} placeholder="2010" />
+                <button style={s.btnSm("#1a6e4a")} onClick={confirmarAgregarCategoria}>Confirmar</button>
+                <button style={s.btnSm("#8a9eaa")} onClick={() => setPendingCatId(null)}>Cancelar</button>
+              </div>
+            )}
+
             <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-              {categoriasSeleccionadas.map(id => (
-                <span key={id} style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:6, padding:"4px 10px", fontSize:12, color:"#1a6e4a", display:"flex", alignItems:"center", gap:6 }}>
-                  {getNombreCategoria(id)}
-                  <button onClick={() => quitarCategoria(id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:14, lineHeight:1 }}>×</button>
-                </span>
+              {categoriasSeleccionadas.map((cat, idx) => (
+                editandoChipIdx === idx ? (
+                  <span key={cat.id} style={{ display:"flex", alignItems:"center", gap:4, background:"#fffdf5", border:"1px solid #c9a84c", borderRadius:6, padding:"4px 8px", flexWrap:"wrap" }}>
+                    <span style={{ fontSize:12, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(cat.id)}:</span>
+                    <input type="number" style={{ ...s.inputSm, width:70 }} value={editandoChipRangos.anioNacDesde} onChange={e => setEditandoChipRangos({...editandoChipRangos, anioNacDesde:e.target.value})} placeholder="desde" />
+                    <span style={{ fontSize:11, color:"#8a9eaa" }}>–</span>
+                    <input type="number" style={{ ...s.inputSm, width:70 }} value={editandoChipRangos.anioNacHasta} onChange={e => setEditandoChipRangos({...editandoChipRangos, anioNacHasta:e.target.value})} placeholder="hasta" />
+                    <button onClick={() => { setCategoriasSeleccionadas(prev => prev.map((c,i) => i===idx ? {...c,...editandoChipRangos} : c)); setEditandoChipIdx(null); }} style={s.btnSm("#1a6e4a")}>✓</button>
+                    <button onClick={() => setEditandoChipIdx(null)} style={s.btnSm("#8a9eaa")}>×</button>
+                  </span>
+                ) : (
+                  <span key={cat.id}
+                    onClick={() => { setEditandoChipIdx(idx); setEditandoChipRangos({ anioNacDesde:cat.anioNacDesde, anioNacHasta:cat.anioNacHasta }); }}
+                    style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:6, padding:"4px 10px", fontSize:12, color:"#1a6e4a", display:"flex", alignItems:"center", gap:6, cursor:"pointer" }}>
+                    {getChipLabel(cat)}
+                    <button onClick={e => { e.stopPropagation(); quitarCategoria(cat.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:14, lineHeight:1 }}>×</button>
+                  </span>
+                )
               ))}
-              {categoriasSeleccionadas.length === 0 && <span style={{ fontSize:12, color:"#8a9eaa" }}>Ninguna categoría agregada</span>}
+              {categoriasSeleccionadas.length === 0 && !pendingCatId && (
+                <span style={{ fontSize:12, color:"#8a9eaa" }}>Ninguna categoría agregada</span>
+              )}
             </div>
           </div>
 
           <div style={{ display:"flex", gap:8 }}>
             <button style={s.btn} onClick={crearTorneo} disabled={loading}>{loading ? "Guardando..." : "Guardar torneo"}</button>
-            <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={() => setMostrarForm(false)}>Cancelar</button>
+            <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={() => { setMostrarForm(false); setPendingCatId(null); setEditandoChipIdx(null); }}>Cancelar</button>
           </div>
         </div>
       )}
@@ -187,7 +254,7 @@ export default function Torneos() {
           </thead>
           <tbody>
             {torneos.length === 0 && (
-              <tr><td colSpan={6} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay torneos creados todavía.</td></tr>
+              <tr><td colSpan={5} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay torneos creados todavía.</td></tr>
             )}
             {torneos.map(t => (
               editando === t.id ? (
@@ -198,28 +265,52 @@ export default function Torneos() {
                     <input type="date" style={{ ...s.inputInline, marginBottom:4 }} value={formEdit.fechaInicioInscripcion} onChange={e => setFormEdit({...formEdit, fechaInicioInscripcion:e.target.value})} />
                     <input type="date" style={s.inputInline} value={formEdit.fechaCierreInscripcion} onChange={e => setFormEdit({...formEdit, fechaCierreInscripcion:e.target.value})} />
                   </td>
-                  <td style={s.td}>
+                  <td style={{ ...s.td, minWidth:240 }}>
                     <div style={{ display:"flex", gap:6, marginBottom:6 }}>
                       <select style={{ ...s.inputInline, flex:1 }} value={catEditSelect} onChange={e => setCatEditSelect(e.target.value)}>
-                        <option value="">— Agregar —</option>
+                        <option value="">— Agregar cat. —</option>
                         {catDisponiblesEdit.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                       </select>
-                      <button style={s.btnSm("#1e3a4a")} onClick={agregarCategoriaEdit}>+</button>
+                      <button style={s.btnSm("#1e3a4a")} onClick={agregarCategoriaEdit} disabled={!catEditSelect}>+</button>
                     </div>
+
+                    {pendingCatEditId && (
+                      <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", background:"#fffdf5", border:"1px solid #e8d5a0", borderRadius:6, padding:"6px 8px", marginBottom:6 }}>
+                        <span style={{ fontSize:11, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(pendingCatEditId)}</span>
+                        <input type="number" style={{ ...s.inputSm, width:65 }} value={pendingRangosEdit.anioNacDesde} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacDesde:e.target.value})} placeholder="desde" />
+                        <span style={{ fontSize:11, color:"#8a9eaa" }}>–</span>
+                        <input type="number" style={{ ...s.inputSm, width:65 }} value={pendingRangosEdit.anioNacHasta} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacHasta:e.target.value})} placeholder="hasta" />
+                        <button style={s.btnSm("#1a6e4a")} onClick={confirmarAgregarCategoriaEdit}>✓</button>
+                        <button style={s.btnSm("#8a9eaa")} onClick={() => setPendingCatEditId(null)}>×</button>
+                      </div>
+                    )}
+
                     <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-                      {(formEdit.categorias||[]).map(id => (
-                        <span key={id} style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:4, padding:"2px 8px", fontSize:11, color:"#1a6e4a", display:"flex", alignItems:"center", gap:4 }}>
-                          {getNombreCategoria(id)}
-                          <button onClick={() => quitarCategoriaEdit(id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:12, lineHeight:1 }}>×</button>
-                        </span>
+                      {(formEdit.categorias||[]).map((cat, idx) => (
+                        editandoChipEditIdx === idx ? (
+                          <span key={cat.id} style={{ display:"flex", alignItems:"center", gap:3, background:"#fffdf5", border:"1px solid #c9a84c", borderRadius:4, padding:"3px 6px", flexWrap:"wrap" }}>
+                            <span style={{ fontSize:11, fontWeight:600 }}>{getNombreCategoria(cat.id)}:</span>
+                            <input type="number" style={{ ...s.inputSm, width:60 }} value={editandoChipEditRangos.anioNacDesde} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacDesde:e.target.value})} placeholder="desde" />
+                            <span style={{ fontSize:11, color:"#8a9eaa" }}>–</span>
+                            <input type="number" style={{ ...s.inputSm, width:60 }} value={editandoChipEditRangos.anioNacHasta} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacHasta:e.target.value})} placeholder="hasta" />
+                            <button onClick={() => { setFormEdit(prev => ({ ...prev, categorias: prev.categorias.map((c,i) => i===idx ? {...c,...editandoChipEditRangos} : c) })); setEditandoChipEditIdx(null); }} style={s.btnSm("#1a6e4a")}>✓</button>
+                            <button onClick={() => setEditandoChipEditIdx(null)} style={s.btnSm("#8a9eaa")}>×</button>
+                          </span>
+                        ) : (
+                          <span key={cat.id}
+                            onClick={() => { setEditandoChipEditIdx(idx); setEditandoChipEditRangos({ anioNacDesde:cat.anioNacDesde, anioNacHasta:cat.anioNacHasta }); }}
+                            style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:4, padding:"2px 8px", fontSize:11, color:"#1a6e4a", display:"flex", alignItems:"center", gap:4, cursor:"pointer" }}>
+                            {getChipLabel(cat)}
+                            <button onClick={e => { e.stopPropagation(); quitarCategoriaEdit(cat.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:12, lineHeight:1 }}>×</button>
+                          </span>
+                        )
                       ))}
                     </div>
                   </td>
-                  <td style={s.td}></td>
                   <td style={{ ...s.td, textAlign:"center" }}>
                     <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
                       <button style={s.btnSm("#1a6e4a")} onClick={() => guardarEdicion(t.id)}>Guardar</button>
-                      <button style={s.btnSm("#8a9eaa")} onClick={() => setEditando(null)}>Cancelar</button>
+                      <button style={s.btnSm("#8a9eaa")} onClick={() => { setEditando(null); setPendingCatEditId(null); setEditandoChipEditIdx(null); }}>Cancelar</button>
                     </div>
                   </td>
                 </tr>

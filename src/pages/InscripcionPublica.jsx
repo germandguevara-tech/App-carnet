@@ -154,8 +154,9 @@ export default function InscripcionPublica() {
       const clubHabilitado = club.habilitado !== false;
       if (!torneoActivo && !clubHabilitado) { setInscripcionCerrada(true); setCargando(false); return; }
 
-      const ids = torneo.categorias || [];
-      if (ids.length > 0) {
+      const catItems = torneo.categorias || [];
+      if (catItems.length > 0) {
+        const ids = catItems.map(c => typeof c === "string" ? c : c.id);
         const snapCats = await getDocs(collection(db, "categorias_carnet"));
         const todas = snapCats.docs.map(d => ({ id:d.id, ...d.data() }));
         setCategorias(todas.filter(c => ids.includes(c.id)));

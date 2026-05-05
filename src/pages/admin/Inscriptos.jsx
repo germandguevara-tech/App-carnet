@@ -42,6 +42,8 @@ export default function Inscriptos() {
   const [orden, setOrden] = useState("desc");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [categorias, setCategorias] = useState([]);
+  const [todasCategorias, setTodasCategorias] = useState([]);
+  const [fueraCategoriaIds, setFueraCategoriaIds] = useState([]);
   const [seleccionados, setSeleccionados] = useState([]);
   const [pagina, setPagina] = useState(1);
   const PORPAGINA = 20;
@@ -58,6 +60,8 @@ export default function Inscriptos() {
     if (activo) setTorneoFiltro(activo.id);
     const snapC = await getDocs(collection(db, "clubes_carnet"));
     setClubes(snapC.docs.map(d => ({ id:d.id, ...d.data() })));
+    const snapCats = await getDocs(collection(db, "categorias_carnet"));
+    setTodasCategorias(snapCats.docs.map(d => ({ id:d.id, ...d.data() })));
   }
 
   async function cargarJugadores() {
@@ -68,6 +72,31 @@ export default function Inscriptos() {
     const listaTorneo = lista.filter(j => j.torneoId === torneoFiltro);
     const cats = [...new Set(listaTorneo.map(j => j.categoria).filter(Boolean))].sort();
     setCategorias(cats);
+
+    // Detección de jugadores fuera de categoría
+    const torneoActual = torneos.find(t => t.id === torneoFiltro);
+    const fueraCat = [];
+    if (torneoActual?.categorias) {
+      const rangoMap = {};
+      (torneoActual.categorias || []).forEach(c => {
+        if (typeof c === "object" && c.id && c.anioNacDesde && c.anioNacHasta) {
+          rangoMap[c.id] = { desde: parseInt(c.anioNacDesde), hasta: parseInt(c.anioNacHasta) };
+        }
+      });
+      const nombreToId = {};
+      todasCategorias.forEach(c => { nombreToId[c.nombre] = c.id; });
+      listaTorneo.forEach(j => {
+        if (!j.fechaNacimiento) return;
+        const anioNac = parseInt(j.fechaNacimiento.split("-")[0]);
+        if (!anioNac) return;
+        const catId = nombreToId[j.categoria];
+        if (!catId) return;
+        const rango = rangoMap[catId];
+        if (!rango) return;
+        if (anioNac < rango.desde || anioNac > rango.hasta) fueraCat.push(j.id);
+      });
+    }
+    setFueraCategoriaIds(fueraCat);
 
     // Detección de duplicados: mismo DNI, distinto club, ignorando inactivos
     const dniCount = {};
@@ -88,6 +117,9 @@ export default function Inscriptos() {
     lista = listaTorneo.slice();
     if (estadoFiltro === "duplicado_entre_clubes") {
       lista = lista.filter(j => dupInfo[j.dni]);
+    } else if (estadoFiltro === "fuera_de_categoria") {
+      lista = lista.filter(j => fueraCat.includes(j.id));
+      if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
     } else {
       if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
       if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
@@ -147,6 +179,9 @@ export default function Inscriptos() {
     if (torneoFiltro) lista = lista.filter(j => j.torneoId === torneoFiltro);
     if (estadoFiltro === "duplicado_entre_clubes") {
       lista = lista.filter(j => duplicados.includes(j.dni));
+    } else if (estadoFiltro === "fuera_de_categoria") {
+      lista = lista.filter(j => fueraCategoriaIds.includes(j.id));
+      if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
     } else {
       if (clubFiltro) lista = lista.filter(j => j.clubId === clubFiltro);
       if (estadoFiltro) lista = lista.filter(j => j.estado === estadoFiltro);
@@ -208,6 +243,7 @@ export default function Inscriptos() {
           <option value="inactivo">Inactivo</option>
           <option value="reactivacion_solicitada">Reactivación</option>
           <option value="duplicado_entre_clubes">⚠️ Duplicado entre clubes</option>
+          <option value="fuera_de_categoria">⚠️ Fuera de categoría</option>
         </select>
         <select style={{ ...s.select, flex:1, minWidth:110 }} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
           <option value="">Todas las cat.</option>
@@ -270,6 +306,11 @@ export default function Inscriptos() {
                     >⚠️</span>
                   )}
                   {j.apellido}, {j.nombre}
+                  {fueraCategoriaIds.includes(j.id) && (
+                    <span style={{ display:"inline-block", background:"#fdecea", color:"#c0392b", border:"1px solid #f5c6c6", borderRadius:4, padding:"1px 6px", fontSize:10, fontWeight:700, marginLeft:6, whiteSpace:"nowrap" }}>
+                      ⚠️ Fuera de cat.
+                    </span>
+                  )}
                 </td>
                 <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.dni}</td>
                 <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "—"}</td>
