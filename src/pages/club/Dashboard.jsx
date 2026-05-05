@@ -95,9 +95,11 @@ export default function ClubDashboard() {
               style={{ width:"100%", background:"#25D366", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               📲 Compartir link de inscripción
             </button>
-            <button onClick={() => setTab("carnets")} style={{ width:"100%", background:"#c9a84c", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              🪪 Carnets digitales
-            </button>
+            {clubData?.carnetsActivos !== false && (
+              <button onClick={() => setTab("carnets")} style={{ width:"100%", background:"#c9a84c", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                🪪 Carnets digitales
+              </button>
+            )}
           </div>
         )}
 
@@ -135,7 +137,7 @@ export default function ClubDashboard() {
             { id:"inicio", icon:"🏠", label:"Inicio" },
             { id:"inscripcion", icon:"➕", label:"Inscribir" },
             { id:"jugadores", icon:"👥", label:"Jugadores" },
-            { id:"carnets", icon:"🪪", label:"Carnets" },
+            ...(clubData?.carnetsActivos !== false ? [{ id:"carnets", icon:"🪪", label:"Carnets" }] : []),
             { id:"verificar", icon:"🔍", label:"Verificar" },
           ].map(item => (
             <button key={item.id} onClick={() => { if(item.id === "inscripcion") setJugadorAReinscribir(null); setTab(item.id); }} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"none", border:"none", cursor:"pointer", padding:4 }}>
