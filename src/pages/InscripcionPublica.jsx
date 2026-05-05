@@ -236,13 +236,33 @@ export default function InscripcionPublica() {
       const snapExistente = await getDocs(query(collection(db, "jugadores_carnet"), where("dni", "==", datos.dni), where("clubId", "==", clubId)));
       const datosJugador = { apellido:datos.apellido, nombre:datos.nombre, dni:datos.dni, fechaNacimiento:datos.fechaNacimiento, categoria:datos.categoria, clubId, torneoId, estado:"pendiente", motivoRechazo:"", fotoCarnetUrl:urlCarnet, fotoDniFrente:urlDniFrente, fotoDniDorso:urlDniDorso, creadoEn:new Date() };
 
+      const catNueva = categorias.find(c => c.nombre === datos.categoria);
+      const tipoNuevo = catNueva?.tipo || "jugador";
+
       if (!snapExistente.empty) {
-        const jugadorExistente = snapExistente.docs[0].data();
-        if (!["rechazado","inactivo"].includes(jugadorExistente.estado)) {
+        const conflicto = tipoNuevo === "jugador" && snapExistente.docs.some(d => {
+          const j = d.data();
+          if (["rechazado", "inactivo"].includes(j.estado)) return false;
+          const catExistente = categorias.find(c => c.nombre === j.categoria);
+          return (catExistente?.tipo || "jugador") === "jugador";
+        });
+
+        if (conflicto) {
           setError("Ya estás inscripto en este club");
-          setLoading(false); return;
+          setLoading(false);
+          return;
         }
-        await updateDoc(doc(db, "jugadores_carnet", snapExistente.docs[0].id), datosJugador);
+
+        const docReinscribir = snapExistente.docs.find(d => {
+          const j = d.data();
+          return j.categoria === datos.categoria && ["rechazado", "inactivo"].includes(j.estado);
+        });
+
+        if (docReinscribir) {
+          await updateDoc(doc(db, "jugadores_carnet", docReinscribir.id), datosJugador);
+        } else {
+          await addDoc(collection(db, "jugadores_carnet"), datosJugador);
+        }
       } else {
         await addDoc(collection(db, "jugadores_carnet"), datosJugador);
       }

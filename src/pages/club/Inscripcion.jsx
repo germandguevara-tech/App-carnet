@@ -294,17 +294,35 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
         creadoEn: new Date(),
       };
 
-      if (!snapExistente.empty) {
-        const jugadorExistente = snapExistente.docs[0].data();
-        const estadosQuePermiteReinscribir = ["rechazado", "inactivo"];
+      const catNueva = categorias.find(c => c.nombre === datos.categoria);
+      const tipoNuevo = catNueva?.tipo || "jugador";
 
-        if (!estadosQuePermiteReinscribir.includes(jugadorExistente.estado)) {
-          setError(`Este jugador ya está inscripto en este club (estado: ${jugadorExistente.estado})`);
+      if (!snapExistente.empty) {
+        // Bloquear solo si la nueva inscripción es jugador y ya existe un jugador activo
+        const conflicto = tipoNuevo === "jugador" && snapExistente.docs.some(d => {
+          const j = d.data();
+          if (["rechazado", "inactivo"].includes(j.estado)) return false;
+          const catExistente = categorias.find(c => c.nombre === j.categoria);
+          return (catExistente?.tipo || "jugador") === "jugador";
+        });
+
+        if (conflicto) {
+          setError(`Este jugador ya está inscripto en este club`);
           setLoading(false);
           return;
         }
 
-        await updateDoc(doc(db, "jugadores_carnet", snapExistente.docs[0].id), datosJugador);
+        // Reinscripción: actualizar si hay un doc de la misma categoría en estado terminal
+        const docReinscribir = snapExistente.docs.find(d => {
+          const j = d.data();
+          return j.categoria === datos.categoria && ["rechazado", "inactivo"].includes(j.estado);
+        });
+
+        if (docReinscribir) {
+          await updateDoc(doc(db, "jugadores_carnet", docReinscribir.id), datosJugador);
+        } else {
+          await addDoc(collection(db, "jugadores_carnet"), datosJugador);
+        }
       } else {
         await addDoc(collection(db, "jugadores_carnet"), datosJugador);
       }
