@@ -32,8 +32,8 @@ export async function subirFotoADrive({ archivo, nombreArchivo, torneoNombre, cl
   });
 }
 
-export function generarNombreCarnet(apellido, nombre, categoria) {
-  const nombreLimpio = `${categoria}-${apellido} ${nombre}`
+export function generarNombreCarnet(apellido, nombre, categoria, dni) {
+  const nombreLimpio = `${categoria}-${apellido} ${nombre}-${dni}`
     .toUpperCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")

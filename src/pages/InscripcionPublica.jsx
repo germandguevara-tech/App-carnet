@@ -224,7 +224,7 @@ export default function InscripcionPublica() {
       let urlCarnet = "", urlDniFrente = "", urlDniDorso = "";
 
       setProgreso("Subiendo foto carnet...");
-      if (fotoCarnet) { const r = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:generarNombreCarnet(datos.apellido, datos.nombre, datos.categoria), torneoNombre, clubNombre }); urlCarnet = r.url; }
+      if (fotoCarnet) { const r = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:generarNombreCarnet(datos.apellido, datos.nombre, datos.categoria, datos.dni), torneoNombre, clubNombre }); urlCarnet = r.url; }
 
       setProgreso("Subiendo foto DNI frente...");
       if (fotoFrente) { const r = await subirFotoADrive({ archivo:fotoFrente, nombreArchivo:generarNombreDniFrente(datos.apellido, datos.nombre, datos.dni), torneoNombre, clubNombre }); urlDniFrente = r.url; }

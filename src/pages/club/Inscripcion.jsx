@@ -249,7 +249,7 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
 
       setProgreso("Subiendo foto carnet...");
       if (fotoCarnet) {
-        const nombre = generarNombreCarnet(datos.apellido, datos.nombre, datos.categoria);
+        const nombre = generarNombreCarnet(datos.apellido, datos.nombre, datos.categoria, datos.dni);
         const result = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:nombre, torneoNombre, clubNombre });
         urlCarnet = result.url;
       }
