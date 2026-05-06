@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase";
-import { collection, getDocs, doc, getDoc, updateDoc, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
 import { descargarExcel } from "../../utils/excel";
 
@@ -49,6 +49,8 @@ export default function Inscriptos() {
   const [motivoRechazo, setMotivoRechazo] = useState(MOTIVOS_RECHAZO[0]);
   const [editando, setEditando] = useState(false);
   const [datosEdit, setDatosEdit] = useState({});
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [duplicados, setDuplicados] = useState([]);
   const [duplicadosInfo, setDuplicadosInfo] = useState({});
   const [orden, setOrden] = useState("desc");
@@ -156,6 +158,15 @@ export default function Inscriptos() {
 
   function getNombreClub(uid) {
     return clubes.find(c => c.uid === uid)?.nombre || "—";
+  }
+
+  async function eliminarJugador() {
+    setEliminando(true);
+    await deleteDoc(doc(db, "jugadores_carnet", jugadorSeleccionado.id));
+    setEliminando(false);
+    setConfirmandoEliminar(false);
+    setJugadorSeleccionado(null);
+    await cargarJugadores();
   }
 
   async function guardarEdicion() {
@@ -442,7 +453,7 @@ export default function Inscriptos() {
           <div style={{ background:"white", borderRadius:16, width:"100%", maxWidth:600, maxHeight:"90vh", overflowY:"auto" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"1.25rem 1.5rem", borderBottom:"1px solid #ede5d5" }}>
               <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>{jugadorSeleccionado.apellido}, {jugadorSeleccionado.nombre}</div>
-              <button onClick={() => setJugadorSeleccionado(null)} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
+              <button onClick={() => { setJugadorSeleccionado(null); setConfirmandoEliminar(false); }} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
             </div>
 
             <div style={{ padding:"1.5rem" }}>
@@ -579,6 +590,43 @@ export default function Inscriptos() {
                 <div style={{ display:"flex", gap:8 }}>
                   <button style={s.btnSm("#1a6e4a")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "habilitado")}>✓ Aprobar reactivación</button>
                   <button style={s.btnSm("#c0392b")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "inactivo")}>✕ Rechazar reactivación</button>
+                </div>
+              )}
+            </div>
+
+            {/* Zona de eliminación */}
+            <div style={{ padding:"1rem 1.5rem 1.5rem", borderTop:"1px solid #ede5d5" }}>
+              {!confirmandoEliminar ? (
+                <button
+                  onClick={() => setConfirmandoEliminar(true)}
+                  style={{ background:"none", border:"1.5px solid #c0392b", borderRadius:8, padding:"8px 16px", color:"#c0392b", fontSize:13, fontWeight:600, cursor:"pointer" }}
+                >
+                  🗑️ Eliminar jugador
+                </button>
+              ) : (
+                <div style={{ background:"#fdecea", borderRadius:10, padding:"14px 16px" }}>
+                  <div style={{ fontSize:13, color:"#c0392b", fontWeight:600, marginBottom:4 }}>
+                    ¿Eliminar a {jugadorSeleccionado.apellido} {jugadorSeleccionado.nombre}?
+                  </div>
+                  <div style={{ fontSize:12, color:"#c0392b", marginBottom:12 }}>
+                    Esta acción no se puede deshacer.
+                  </div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button
+                      onClick={() => setConfirmandoEliminar(false)}
+                      disabled={eliminando}
+                      style={{ background:"white", border:"1.5px solid #ede5d5", borderRadius:8, padding:"7px 16px", fontSize:13, fontWeight:600, cursor:"pointer", color:"#4a6070" }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={eliminarJugador}
+                      disabled={eliminando}
+                      style={{ background:"#c0392b", border:"none", borderRadius:8, padding:"7px 16px", fontSize:13, fontWeight:600, cursor:"pointer", color:"white", opacity: eliminando ? 0.7 : 1 }}
+                    >
+                      {eliminando ? "Eliminando..." : "Sí, eliminar"}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
