@@ -8,7 +8,7 @@ const s = {
   titulo: { fontSize:22, fontWeight:600, color:"#1e3a4a", margin:0 },
   th: { padding:"10px 14px", fontSize:11, fontWeight:600, color:"#8a9eaa", textTransform:"uppercase", letterSpacing:"0.6px", textAlign:"left", borderBottom:"1px solid #ede5d5", whiteSpace:"nowrap" },
   td: { padding:"10px 14px", fontSize:13, color:"#1e3a4a", borderBottom:"1px solid #f5f0e8", verticalAlign:"middle", cursor:"pointer" },
-  select: { padding:"9px 12px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", background:"white" },
+  select: { padding:"9px 12px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", background:"white", width:"100%" },
   btn: { background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:600, cursor:"pointer" },
   btnSm: (color) => ({ background:color, color:"white", border:"none", borderRadius:6, padding:"5px 12px", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }),
 };
@@ -25,7 +25,19 @@ const MOTIVOS_RECHAZO = [
   "Otro motivo"
 ];
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const handler = e => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
 export default function Inscriptos() {
+  const isMobile = useIsMobile();
   const [jugadores, setJugadores] = useState([]);
   const [torneos, setTorneos] = useState([]);
   const [clubes, setClubes] = useState([]);
@@ -203,19 +215,35 @@ export default function Inscriptos() {
   const jugadoresPaginados = jugadores.slice((pagina-1)*PORPAGINA, pagina*PORPAGINA);
   const totalPaginas = Math.ceil(jugadores.length / PORPAGINA);
 
+  // ─── Filtros selects (compartido mobile/desktop) ─────────────────────────────
+  const selectEstado = (
+    <select style={s.select} value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
+      <option value="">Todos</option>
+      <option value="pendiente">Pendiente</option>
+      <option value="habilitado">Habilitado</option>
+      <option value="rechazado">Rechazado</option>
+      <option value="baja_solicitada">Baja solicitada</option>
+      <option value="inactivo">Inactivo</option>
+      <option value="reactivacion_solicitada">Reactivación</option>
+      <option value="duplicado_entre_clubes">⚠️ Duplicado entre clubes</option>
+      <option value="fuera_de_categoria">⚠️ Fuera de categoría</option>
+    </select>
+  );
+
   return (
     <div style={{ overflow:"hidden" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.5rem" }}>
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.5rem", flexWrap:"wrap", gap:8 }}>
         <div style={s.titulo}>👥 Inscriptos</div>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           {seleccionados.length > 0 && (
-            <span style={{ fontSize:13, color:"#8a9eaa" }}>{seleccionados.length} seleccionado{seleccionados.length > 1 ? "s" : ""}</span>
+            <span style={{ fontSize:13, color:"#8a9eaa" }}>{seleccionados.length} sel.</span>
           )}
           <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={seleccionarTodos}>
-            {seleccionados.length === jugadores.length && jugadores.length > 0 ? "Deseleccionar todos" : "Seleccionar todos"}
+            {seleccionados.length === jugadores.length && jugadores.length > 0 ? "✗ Todos" : "✓ Todos"}
           </button>
           <button style={{ ...s.btn, background:"#1a6e4a" }} onClick={handleDescargarExcel}>
-            📥 {seleccionados.length > 0 ? `Descargar (${seleccionados.length})` : "Descargar Excel"}
+            📥 {seleccionados.length > 0 ? `(${seleccionados.length})` : "Excel"}
           </button>
         </div>
       </div>
@@ -226,104 +254,179 @@ export default function Inscriptos() {
         </div>
       )}
 
-      <div style={{ display:"flex", gap:8, marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
-        <select style={{ ...s.select, flex:2, minWidth:160 }} value={torneoFiltro} onChange={e => setTorneoFiltro(e.target.value)}>
-          {torneos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-        </select>
-        <select style={{ ...s.select, flex:1, minWidth:120 }} value={clubFiltro} onChange={e => setClubFiltro(e.target.value)}>
-          <option value="">Todos los clubes</option>
-          {clubes.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
-        </select>
-        <select style={{ ...s.select, flex:1, minWidth:110 }} value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
-          <option value="">Todos</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="habilitado">Habilitado</option>
-          <option value="rechazado">Rechazado</option>
-          <option value="baja_solicitada">Baja solicitada</option>
-          <option value="inactivo">Inactivo</option>
-          <option value="reactivacion_solicitada">Reactivación</option>
-          <option value="duplicado_entre_clubes">⚠️ Duplicado entre clubes</option>
-          <option value="fuera_de_categoria">⚠️ Fuera de categoría</option>
-        </select>
-        <select style={{ ...s.select, flex:1, minWidth:110 }} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
-          <option value="">Todas las cat.</option>
-          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select style={{ ...s.select, flex:1, minWidth:130 }} value={orden} onChange={e => setOrden(e.target.value)}>
-          <option value="desc">Más recientes</option>
-          <option value="asc">Más antiguos</option>
-        </select>
-      </div>
+      {/* Filtros — grilla 2 cols en mobile, flex en desktop */}
+      {isMobile ? (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:"1rem" }}>
+          <div style={{ gridColumn:"span 2" }}>
+            <select style={s.select} value={torneoFiltro} onChange={e => setTorneoFiltro(e.target.value)}>
+              {torneos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+            </select>
+          </div>
+          <select style={s.select} value={clubFiltro} onChange={e => setClubFiltro(e.target.value)}>
+            <option value="">Todos los clubes</option>
+            {clubes.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
+          </select>
+          {selectEstado}
+          <select style={s.select} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
+            <option value="">Todas las cat.</option>
+            {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select style={s.select} value={orden} onChange={e => setOrden(e.target.value)}>
+            <option value="desc">Más recientes</option>
+            <option value="asc">Más antiguos</option>
+          </select>
+        </div>
+      ) : (
+        <div style={{ display:"flex", gap:8, marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
+          <select style={{ ...s.select, flex:2, minWidth:160 }} value={torneoFiltro} onChange={e => setTorneoFiltro(e.target.value)}>
+            {torneos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+          </select>
+          <select style={{ ...s.select, flex:1, minWidth:120 }} value={clubFiltro} onChange={e => setClubFiltro(e.target.value)}>
+            <option value="">Todos los clubes</option>
+            {clubes.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
+          </select>
+          <select style={{ ...s.select, flex:1, minWidth:110 }} value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
+            <option value="">Todos</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="habilitado">Habilitado</option>
+            <option value="rechazado">Rechazado</option>
+            <option value="baja_solicitada">Baja solicitada</option>
+            <option value="inactivo">Inactivo</option>
+            <option value="reactivacion_solicitada">Reactivación</option>
+            <option value="duplicado_entre_clubes">⚠️ Duplicado entre clubes</option>
+            <option value="fuera_de_categoria">⚠️ Fuera de categoría</option>
+          </select>
+          <select style={{ ...s.select, flex:1, minWidth:110 }} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
+            <option value="">Todas las cat.</option>
+            {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select style={{ ...s.select, flex:1, minWidth:130 }} value={orden} onChange={e => setOrden(e.target.value)}>
+            <option value="desc">Más recientes</option>
+            <option value="asc">Más antiguos</option>
+          </select>
+        </div>
+      )}
 
-      <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflow:"hidden" }}>
-        <table style={{ width:"100%", tableLayout:"fixed", borderCollapse:"collapse" }}>
-          <colgroup>
-            <col style={{ width:40 }} />
-            <col style={{ width:60 }} />
-            <col />
-            <col style={{ width:100 }} />
-            <col style={{ width:100 }} />
-            <col style={{ width:90 }} />
-            <col style={{ width:90 }} />
-            <col style={{ width:90 }} />
-            <col style={{ width:80 }} />
-          </colgroup>
-          <thead style={{ background:"#f5f0e8" }}>
-            <tr>
-              <th style={{ ...s.th, width:40, textAlign:"center" }}>
-                <input type="checkbox" checked={seleccionados.length === jugadores.length && jugadores.length > 0} onChange={seleccionarTodos} />
-              </th>
-              <th style={s.th}>Foto</th>
-              <th style={s.th}>Apellido y nombre</th>
-              <th style={s.th}>DNI</th>
-              <th style={s.th}>Fecha nac.</th>
-              <th style={s.th}>Categoría</th>
-              <th style={s.th}>Club</th>
-              <th style={{ ...s.th, textAlign:"center" }}>Estado</th>
-              <th style={{ ...s.th, textAlign:"center" }}>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</td></tr>}
-            {!loading && jugadores.length === 0 && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</td></tr>}
-            {jugadoresPaginados.map(j => (
-              <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer", background: fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white" }}
-                onMouseEnter={e => e.currentTarget.style.background="#f9f7f4"}
-                onMouseLeave={e => e.currentTarget.style.background=fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white"}>
-                <td style={{ ...s.td, textAlign:"center" }} onClick={e => e.stopPropagation()}>
-                  <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccion(j.id)} />
-                </td>
-                <td style={s.td}>
-                  <div style={{ width:32, height:43, borderRadius:4, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    {j.fotoCarnetUrl ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:14 }}>👤</span>}
-                  </div>
-                </td>
-                <td style={{ ...s.td, fontWeight:600, wordBreak:"break-word" }}>
+      {/* ─── Vista mobile: tarjetas ─────────────────────────────────────────── */}
+      {isMobile ? (
+        <div>
+          {loading && <div style={{ textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</div>}
+          {!loading && jugadores.length === 0 && <div style={{ textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</div>}
+          {jugadoresPaginados.map(j => (
+            <div
+              key={j.id}
+              onClick={() => setJugadorSeleccionado(j)}
+              style={{
+                background: fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white",
+                borderRadius: 10,
+                border: "1px solid #ede5d5",
+                padding: "12px",
+                marginBottom: 8,
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:32, height:32, borderRadius:"50%", overflow:"hidden", background:"#f5f0e8", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {j.fotoCarnetUrl
+                    ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    : <span style={{ fontSize:14 }}>👤</span>}
+                </div>
+                <div style={{ flex:1, fontWeight:600, fontSize:14, color:"#1e3a4a", minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                   {duplicados.includes(j.dni) && (
-                    <span
-                      title={`También en: ${(duplicadosInfo[j.dni] || []).filter(cid => cid !== j.clubId).map(cid => getNombreClub(cid)).join(", ")}`}
-                      style={{ color:"#c0392b", marginRight:4, cursor:"help" }}
-                    >⚠️</span>
+                    <span title={`También en: ${(duplicadosInfo[j.dni]||[]).filter(cid=>cid!==j.clubId).map(cid=>getNombreClub(cid)).join(", ")}`} style={{ color:"#c0392b", marginRight:4, cursor:"help" }}>⚠️</span>
                   )}
                   {j.apellido}, {j.nombre}
-                </td>
-                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.dni}</td>
-                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "—"}</td>
-                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.categoria}</td>
-                <td style={{ ...s.td, whiteSpace:"nowrap" }}>{getNombreClub(j.clubId)}</td>
-                <td style={{ ...s.td, textAlign:"center", whiteSpace:"nowrap" }}>
-                  <span style={{ background: ESTADO_BG[j.estado], color: ESTADO_COLORES[j.estado], borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600 }}>
-                    {j.estado}
-                  </span>
-                </td>
-                <td style={{ ...s.td, fontSize:11, color:"#8a9eaa", textAlign:"center", whiteSpace:"nowrap" }}>
-                  {j.creadoEn?.toDate ? j.creadoEn.toDate().toLocaleDateString("es-AR") : ""}
-                </td>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={seleccionados.includes(j.id)}
+                  onChange={() => toggleSeleccion(j.id)}
+                  onClick={e => e.stopPropagation()}
+                />
+              </div>
+              <div style={{ display:"flex", gap:8, marginTop:8, alignItems:"center", flexWrap:"wrap" }}>
+                {j.categoria && <span style={{ fontSize:12, color:"#4a6070" }}>{j.categoria}</span>}
+                {j.categoria && <span style={{ fontSize:12, color:"#ced4da" }}>·</span>}
+                <span style={{ fontSize:12, color:"#4a6070" }}>{getNombreClub(j.clubId)}</span>
+                <span style={{ background: ESTADO_BG[j.estado], color: ESTADO_COLORES[j.estado], borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:600 }}>
+                  {j.estado}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* ─── Vista desktop: tabla ──────────────────────────────────────────── */
+        <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflow:"hidden" }}>
+          <table style={{ width:"100%", tableLayout:"fixed", borderCollapse:"collapse" }}>
+            <colgroup>
+              <col style={{ width:40 }} />
+              <col style={{ width:60 }} />
+              <col />
+              <col style={{ width:100 }} />
+              <col style={{ width:100 }} />
+              <col style={{ width:90 }} />
+              <col style={{ width:90 }} />
+              <col style={{ width:90 }} />
+              <col style={{ width:80 }} />
+            </colgroup>
+            <thead style={{ background:"#f5f0e8" }}>
+              <tr>
+                <th style={{ ...s.th, width:40, textAlign:"center" }}>
+                  <input type="checkbox" checked={seleccionados.length === jugadores.length && jugadores.length > 0} onChange={seleccionarTodos} />
+                </th>
+                <th style={s.th}>Foto</th>
+                <th style={s.th}>Apellido y nombre</th>
+                <th style={s.th}>DNI</th>
+                <th style={s.th}>Fecha nac.</th>
+                <th style={s.th}>Categoría</th>
+                <th style={s.th}>Club</th>
+                <th style={{ ...s.th, textAlign:"center" }}>Estado</th>
+                <th style={{ ...s.th, textAlign:"center" }}>Fecha</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {loading && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</td></tr>}
+              {!loading && jugadores.length === 0 && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</td></tr>}
+              {jugadoresPaginados.map(j => (
+                <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer", background: fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white" }}
+                  onMouseEnter={e => e.currentTarget.style.background="#f9f7f4"}
+                  onMouseLeave={e => e.currentTarget.style.background=fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white"}>
+                  <td style={{ ...s.td, textAlign:"center" }} onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccion(j.id)} />
+                  </td>
+                  <td style={s.td}>
+                    <div style={{ width:32, height:43, borderRadius:4, overflow:"hidden", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      {j.fotoCarnetUrl ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:14 }}>👤</span>}
+                    </div>
+                  </td>
+                  <td style={{ ...s.td, fontWeight:600, wordBreak:"break-word" }}>
+                    {duplicados.includes(j.dni) && (
+                      <span
+                        title={`También en: ${(duplicadosInfo[j.dni] || []).filter(cid => cid !== j.clubId).map(cid => getNombreClub(cid)).join(", ")}`}
+                        style={{ color:"#c0392b", marginRight:4, cursor:"help" }}
+                      >⚠️</span>
+                    )}
+                    {j.apellido}, {j.nombre}
+                  </td>
+                  <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.dni}</td>
+                  <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "—"}</td>
+                  <td style={{ ...s.td, whiteSpace:"nowrap" }}>{j.categoria}</td>
+                  <td style={{ ...s.td, whiteSpace:"nowrap" }}>{getNombreClub(j.clubId)}</td>
+                  <td style={{ ...s.td, textAlign:"center", whiteSpace:"nowrap" }}>
+                    <span style={{ background: ESTADO_BG[j.estado], color: ESTADO_COLORES[j.estado], borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600 }}>
+                      {j.estado}
+                    </span>
+                  </td>
+                  <td style={{ ...s.td, fontSize:11, color:"#8a9eaa", textAlign:"center", whiteSpace:"nowrap" }}>
+                    {j.creadoEn?.toDate ? j.creadoEn.toDate().toLocaleDateString("es-AR") : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {totalPaginas > 1 && (
         <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:"1rem" }}>
@@ -333,6 +436,7 @@ export default function Inscriptos() {
         </div>
       )}
 
+      {/* ─── Modal de detalle (igual en mobile y desktop) ───────────────────── */}
       {jugadorSeleccionado && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:"1rem" }}>
           <div style={{ background:"white", borderRadius:16, width:"100%", maxWidth:600, maxHeight:"90vh", overflowY:"auto" }}>
@@ -362,7 +466,6 @@ export default function Inscriptos() {
                     ) : <span style={{ fontSize:24, color:"#8a9eaa" }}>Sin foto</span>}
                   </div>
                 </div>
-
               </div>
 
               <div style={{ flex:1, minWidth:200 }}>
@@ -435,7 +538,7 @@ export default function Inscriptos() {
               {jugadorSeleccionado.estado === "pendiente" && (
                 <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                   <button style={s.btnSm("#1a6e4a")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "habilitado")}>✓ Habilitar</button>
-                  <div style={{ display:"flex", gap:6, alignItems:"center", flex:1 }}>
+                  <div style={{ display:"flex", gap:6, alignItems:"center", flex:1, minWidth:200 }}>
                     <select style={{ ...s.select, flex:1, fontSize:12, padding:"5px 8px" }} value={motivoRechazo} onChange={e => setMotivoRechazo(e.target.value)}>
                       {MOTIVOS_RECHAZO.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
@@ -444,9 +547,9 @@ export default function Inscriptos() {
                 </div>
               )}
               {jugadorSeleccionado.estado === "habilitado" && (
-                <div style={{ display:"flex", gap:8 }}>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                   <button style={s.btnSm("#c9a84c")} onClick={() => cambiarEstado(jugadorSeleccionado.id, "pendiente")}>Volver a pendiente</button>
-                  <div style={{ display:"flex", gap:6, alignItems:"center", flex:1 }}>
+                  <div style={{ display:"flex", gap:6, alignItems:"center", flex:1, minWidth:200 }}>
                     <select style={{ ...s.select, flex:1, fontSize:12, padding:"5px 8px" }} value={motivoRechazo} onChange={e => setMotivoRechazo(e.target.value)}>
                       {MOTIVOS_RECHAZO.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
