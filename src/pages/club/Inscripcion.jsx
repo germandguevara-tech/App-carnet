@@ -184,7 +184,7 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
         fechaNacimiento: jugadorAReinscribir.fechaNacimiento || "",
         categoria: jugadorAReinscribir.categoria || ""
       });
-      setPaso(2);
+      setPaso(1);
     }
   }, [jugadorAReinscribir]);
 

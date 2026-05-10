@@ -8,7 +8,8 @@
       "Bash(cp /mnt/user-data/uploads/WhatsApp_Image_2026-02-22_at_10_11_14_AM.jpeg /c/Users/Usuario/app-carnet/public/icon-192.jpeg)",
       "Bash(cp /mnt/user-data/uploads/WhatsApp_Image_2026-02-22_at_10_11_14_AM.jpeg /c/Users/Usuario/app-carnet/public/icon-512.jpeg)",
       "Read(//mnt/**)",
-      "Read(//c/Users/Usuario/**)"
+      "Read(//c/Users/Usuario/**)",
+      "Bash(npx vite *)"
     ]
   }
 }

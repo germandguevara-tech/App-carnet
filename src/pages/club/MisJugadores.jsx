@@ -108,12 +108,24 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
                   {estado.texto}
                 </span>
                 {j.estado === "rechazado" && inscripcionActiva && (
-                  <button
-                    onClick={() => onReinscribir(j)}
-                    style={{ background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}
-                  >
-                    🔄 Reinscribir
-                  </button>
+                  <>
+                    <button
+                      onClick={() => onReinscribir(j)}
+                      style={{ background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}
+                    >
+                      🔄 Reinscribir
+                    </button>
+                    <button
+                      onClick={() => {
+                        const link = `${window.location.origin}/reinscribir/${j.id}`;
+                        const msg = encodeURIComponent(`Hola ${j.nombre}, tu inscripción fue rechazada. Por favor completá el formulario para reinscribirte: ${link}`);
+                        window.open(`https://wa.me/?text=${msg}`, "_blank");
+                      }}
+                      style={{ background:"#25D366", color:"white", border:"none", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}
+                    >
+                      📤 Enviar link
+                    </button>
+                  </>
                 )}
                 {j.estado === "habilitado" && inscripcionActiva && (
                   <button

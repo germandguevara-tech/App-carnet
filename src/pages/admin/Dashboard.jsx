@@ -7,12 +7,14 @@ import Clubes from "./Clubes";
 import Categorias from "./Categorias";
 import Inscriptos from "./Inscriptos";
 import Configuracion from "./Configuracion";
+import Visualizadores from "./Visualizadores";
 
 const MENU = [
   { id: "torneos", label: "Torneos", icon: "🏆" },
   { id: "clubes", label: "Clubes", icon: "🏟️" },
   { id: "categorias", label: "Categorías", icon: "📋" },
   { id: "inscriptos", label: "Inscriptos", icon: "👥" },
+  { id: "visualizadores", label: "Visualizadores", icon: "👁️" },
   { id: "configuracion", label: "Configuración", icon: "⚙️" },
 ];
 
@@ -132,6 +134,7 @@ export default function AdminDashboard() {
         {seccion === "clubes" && <Clubes />}
         {seccion === "categorias" && <Categorias />}
         {seccion === "inscriptos" && <Inscriptos />}
+        {seccion === "visualizadores" && <Visualizadores />}
         {seccion === "configuracion" && <Configuracion />}
       </div>
     </div>

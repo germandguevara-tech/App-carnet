@@ -6,6 +6,8 @@ import ClubDashboard from "./pages/club/Dashboard";
 import ArbitroDashboard from "./pages/arbitro/Dashboard";
 import Verificar from "./pages/Verificar";
 import InscripcionPublica from "./pages/InscripcionPublica";
+import ReinscripcionPublica from "./pages/ReinscripcionPublica";
+import VisualizadorDashboard from "./pages/visualizador/Dashboard";
 
 function RutaProtegida({ children, rol }) {
   const { user, userData, loading } = useAuth();
@@ -22,6 +24,7 @@ function RutaLogin() {
     if (userData.rol === "admin") return <Navigate to="/admin" />;
     if (userData.rol === "club") return <Navigate to="/club" />;
     if (userData.rol === "arbitro") return <Navigate to="/arbitro" />;
+    if (userData.rol === "visualizador") return <Navigate to="/visualizador" />;
   }
   return <Login />;
 }
@@ -47,8 +50,14 @@ export default function App() {
               <ArbitroDashboard />
             </RutaProtegida>
           } />
+          <Route path="/visualizador" element={
+            <RutaProtegida rol="visualizador">
+              <VisualizadorDashboard />
+            </RutaProtegida>
+          } />
           <Route path="/verificar/:id" element={<Verificar />} />
           <Route path="/inscribir/:clubId/:torneoId" element={<InscripcionPublica />} />
+          <Route path="/reinscribir/:jugadorId" element={<ReinscripcionPublica />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>
