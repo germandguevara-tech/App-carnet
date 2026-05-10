@@ -16,3 +16,8 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
+
+// Secondary app for creating users from the admin panel without
+// affecting the admin's own auth session.
+const secondaryApp = initializeApp(firebaseConfig, "secondary");
+export const authSecondary = getAuth(secondaryApp);

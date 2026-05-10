@@ -4,6 +4,17 @@ import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const handler = e => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
 import { urlVisualizacion } from "../../utils/drive";
 import CarnetViz from "./CarnetViz";
 
@@ -18,6 +29,7 @@ const ESTADO_INFO = {
 export default function VisualizadorDashboard() {
   const { userData } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState("jugadores");
   const [torneoNombre, setTorneoNombre] = useState("");
   const [jugadores, setJugadores] = useState([]);
@@ -100,7 +112,7 @@ export default function VisualizadorDashboard() {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
             />
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr", gap:8 }}>
               <select
                 style={{ padding:"10px 12px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:13, outline:"none", background:"white" }}
                 value={filtroClub}
@@ -118,7 +130,7 @@ export default function VisualizadorDashboard() {
                 {categorias.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <select
-                style={{ padding:"10px 12px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:13, outline:"none", background:"white" }}
+                style={{ padding:"10px 12px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:13, outline:"none", background:"white", gridColumn: isMobile ? "span 2" : "auto" }}
                 value={filtroEstado}
                 onChange={e => setFiltroEstado(e.target.value)}
               >

@@ -3,6 +3,7 @@ import { db } from "../../firebase";
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
 import { descargarExcel } from "../../utils/excel";
+import ModalReporte from "./ModalReporte";
 
 const s = {
   titulo: { fontSize:22, fontWeight:600, color:"#1e3a4a", margin:0 },
@@ -60,6 +61,7 @@ export default function Inscriptos() {
   const [fueraCategoriaIds, setFueraCategoriaIds] = useState([]);
   const [seleccionados, setSeleccionados] = useState([]);
   const [pagina, setPagina] = useState(1);
+  const [mostrarReporte, setMostrarReporte] = useState(false);
   const PORPAGINA = 20;
 
   useEffect(() => { cargarFiltros(); }, []);
@@ -256,6 +258,9 @@ export default function Inscriptos() {
           <button style={{ ...s.btn, background:"#1a6e4a" }} onClick={handleDescargarExcel}>
             📥 {seleccionados.length > 0 ? `(${seleccionados.length})` : "Excel"}
           </button>
+          <button style={{ ...s.btn, background:"#7c3aed" }} onClick={() => setMostrarReporte(true)}>
+            🖨️ Reportes
+          </button>
         </div>
       </div>
 
@@ -445,6 +450,18 @@ export default function Inscriptos() {
           <span style={{ fontSize:13, color:"#4a6070", padding:"6px 14px" }}>{pagina} / {totalPaginas}</span>
           <button style={{ background:"none", border:"1px solid #ede5d5", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:13, color: pagina===totalPaginas ? "#8a9eaa" : "#1e3a4a" }} onClick={() => setPagina(p => Math.min(totalPaginas,p+1))} disabled={pagina===totalPaginas}>Siguiente →</button>
         </div>
+      )}
+
+      {mostrarReporte && (
+        <ModalReporte
+          onClose={() => setMostrarReporte(false)}
+          torneos={torneos}
+          clubes={clubes}
+          defaultTorneoId={torneoFiltro}
+          defaultClubId={clubFiltro}
+          defaultEstado={estadoFiltro}
+          defaultCategoria={categoriaFiltro}
+        />
       )}
 
       {/* ─── Modal de detalle (igual en mobile y desktop) ───────────────────── */}

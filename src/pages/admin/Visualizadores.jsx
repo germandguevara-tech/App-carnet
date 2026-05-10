@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { db, auth } from "../../firebase";
+import { db, authSecondary } from "../../firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
@@ -129,7 +129,7 @@ export default function Visualizadores() {
     if (!form.email || !form.password || !form.torneoId) { setError("Completá email, contraseña y torneo"); return; }
     setLoading(true); setError("");
     try {
-      const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      const cred = await createUserWithEmailAndPassword(authSecondary, form.email, form.password);
       await addDoc(collection(db, "Usuarios"), {
         email: form.email,
         Rol: "visualizador",
