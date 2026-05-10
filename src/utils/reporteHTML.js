@@ -36,35 +36,36 @@ export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada,
     return c?.logoUrl ? urlVisualizacion(c.logoUrl, 60) : null;
   }
 
-  const headerImg = esPorClub && clubData?.logoUrl
-    ? `<img class="logo-header" src="${urlVisualizacion(clubData.logoUrl, 120)}" onerror="this.style.display='none'" />`
-    : `<div class="logo-placeholder">⚽</div>`;
-
   const headerHTML = (cat) => `
-    <div class="page-header">
-      <div class="ph-left">${headerImg}</div>
-      <div class="ph-center">
-        <div class="ph-torneo">${torneoNombre}</div>
-        ${temporada ? `<div class="ph-temp">${temporada}</div>` : ""}
-        ${esPorClub ? `<div class="ph-club">${clubData?.nombre || ""}</div>` : ""}
-      </div>
-      <div class="ph-right">
-        <div class="ph-fecha-label">Generado el</div>
-        <div class="ph-fecha">${fecha}</div>
-      </div>
-    </div>
-    <div class="header-line"></div>
-    <div class="cat-block">
-      <div class="cat-title">${cat}</div>
-      <div class="cat-accent"></div>
-    </div>`;
+    <h2>${torneoNombre}</h2>
+    ${temporada ? `<p class="subtitulo">${temporada}</p>` : ""}
+    ${esPorClub && clubData?.nombre ? `<p class="subtitulo">${clubData.nombre}</p>` : ""}
+    <p class="fecha">${fecha}</p>
+    <p class="categoria">${cat.toUpperCase()}</p>`;
+
+  // colgroup para 5 columnas (por club) o 6 columnas (general)
+  const colgroup = esPorClub
+    ? `<colgroup>
+        <col class="num">
+        <col class="nombre">
+        <col class="dni">
+        <col class="fecha-col">
+        <col class="estado">
+      </colgroup>`
+    : `<colgroup>
+        <col class="num">
+        <col class="nombre">
+        <col class="dni">
+        <col class="fecha-col">
+        <col class="club">
+        <col class="estado">
+      </colgroup>`;
 
   const tableHeader = esPorClub
-    ? `<tr><th class="th-n">N°</th><th>Apellido y Nombre</th><th>DNI</th><th>Fecha Nac.</th><th>Estado</th></tr>`
-    : `<tr><th class="th-n">N°</th><th>Apellido y Nombre</th><th>DNI</th><th>Fecha Nac.</th><th>Club</th><th>Estado</th></tr>`;
+    ? `<tr><th>N°</th><th>Apellido y Nombre</th><th>DNI</th><th>Fecha Nac.</th><th>Estado</th></tr>`
+    : `<tr><th>N°</th><th>Apellido y Nombre</th><th>DNI</th><th>Fecha Nac.</th><th>Club</th><th>Estado</th></tr>`;
 
   let sections = "";
-  let globalN = 0;
 
   categorias.forEach((cat, idx) => {
     const jsCat = jugadores
@@ -73,20 +74,18 @@ export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada,
     if (jsCat.length === 0) return;
 
     const rows = jsCat.map((j, i) => {
-      globalN++;
       const logoClub = !esPorClub ? getLogoClub(j.clubId) : null;
-      const evenOdd = i % 2 === 0 ? "odd" : "even";
-      const clubCell = esPorClub ? "" : `<td class="td-club">
+      const clubCell = esPorClub ? "" : `<td>
         ${logoClub ? `<img class="escudo" src="${logoClub}" onerror="this.style.display='none'" />` : ""}
         ${getNombreClub(j.clubId)}
       </td>`;
-      return `<tr class="${evenOdd}">
-        <td class="td-n">${i + 1}</td>
-        <td class="td-nombre"><strong>${j.apellido || ""}</strong>, ${j.nombre || ""}</td>
-        <td class="td-dni">${j.dni || "—"}</td>
-        <td class="td-fecha">${formatFecha(j.fechaNacimiento)}</td>
+      return `<tr>
+        <td style="text-align:center;color:#8a9eaa">${i + 1}</td>
+        <td><strong>${j.apellido || ""}</strong>, ${j.nombre || ""}</td>
+        <td>${j.dni || "—"}</td>
+        <td>${formatFecha(j.fechaNacimiento)}</td>
         ${clubCell}
-        <td class="td-estado"><span class="badge estado-${j.estado}">${estadoLabel(j.estado)}</span></td>
+        <td><span class="badge estado-${j.estado}">${estadoLabel(j.estado)}</span></td>
       </tr>`;
     }).join("");
 
@@ -95,10 +94,11 @@ export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada,
     sections += `<section class="page-section${pageBreak}">
       ${headerHTML(cat)}
       <table>
+        ${colgroup}
         <thead>${tableHeader}</thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="section-footer">
+      <div class="footer">
         <span>${esPorClub ? (clubData?.nombre || "") + " · " : ""}${torneoNombre}</span>
         <span>${jsCat.length} jugador${jsCat.length !== 1 ? "es" : ""}</span>
       </div>
@@ -115,79 +115,56 @@ export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada,
 <meta charset="UTF-8">
 <title>Reporte — ${torneoNombre}</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1a2f4a; background: white; }
-
-  .page-section { padding: 12mm 12mm 10mm; }
-
-  /* Page header */
-  .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-  .ph-left { width: 72px; flex-shrink: 0; }
-  .ph-center { flex: 1; text-align: center; }
-  .ph-right { width: 90px; text-align: right; flex-shrink: 0; }
-  .logo-header { width: 60px; height: 60px; object-fit: contain; }
-  .logo-placeholder { width: 52px; height: 52px; background: #e8d5a0; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center; font-size: 22px; }
-  .ph-torneo { font-size: 17px; font-weight: 700; color: #1a2f4a; line-height: 1.2; }
-  .ph-temp { font-size: 11px; color: #666; margin-top: 2px; }
-  .ph-club { font-size: 12px; font-weight: 600; color: #1a2f4a; margin-top: 3px; }
-  .ph-fecha-label { font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
-  .ph-fecha { font-size: 10px; color: #666; font-weight: 600; margin-top: 2px; }
-
-  .header-line { height: 2.5px; background: #1a2f4a; margin-bottom: 10px; border-radius: 1px; }
-
-  /* Category block */
-  .cat-block { margin-bottom: 6px; }
-  .cat-title { background: #1a2f4a; color: white; padding: 6px 12px;
-    font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
-    border-radius: 4px 4px 0 0; }
-  .cat-accent { height: 3px; background: #c9a84c; border-radius: 0 0 2px 2px; }
-
-  /* Table */
-  table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 6px; }
-  thead th { background: #2e4f6a; color: white; padding: 6px 8px;
-    text-align: left; font-size: 9.5px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.4px; border: 1px solid #1a3a52; }
-  .th-n { width: 28px; text-align: center; }
-
-  tbody tr.odd { background: white; }
-  tbody tr.even { background: #f7f3ee; }
-  tbody tr td { padding: 6px 8px; border: 1px solid #e0d8ce; vertical-align: middle; }
-  .td-n { text-align: center; color: #8a9eaa; font-size: 9px; width: 28px; }
-  .td-nombre { font-size: 10.5px; }
-  .td-dni { white-space: nowrap; width: 75px; }
-  .td-fecha { white-space: nowrap; width: 70px; }
-  .td-club { width: 130px; }
-  .td-estado { width: 80px; }
-  .club-cell { display: flex; align-items: center; gap: 5px; }
-  .escudo { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; vertical-align: middle; margin-right: 4px; }
+  body { font-family: Arial, sans-serif; margin: 15mm; }
+  h2 { text-align: center; color: #1a2f4a; margin: 4px 0; }
+  .subtitulo { text-align: center; font-size: 11pt; margin: 2px 0; }
+  .fecha { text-align: right; font-size: 8pt; color: #666; }
+  .categoria {
+    background: #1a2f4a; color: white;
+    padding: 5px 10px; font-size: 10pt;
+    font-weight: bold; margin-top: 12px; margin-bottom: 0;
+  }
+  table {
+    width: 100%; border-collapse: collapse;
+    table-layout: fixed; font-size: 9pt;
+  }
+  col.num      { width: 7%; }
+  col.nombre   { width: 35%; }
+  col.dni      { width: 18%; }
+  col.fecha-col { width: 16%; }
+  col.estado   { width: 16%; }
+  col.club     { width: 16%; }
+  th {
+    background: #2a4f6a; color: white;
+    padding: 4px 6px; text-align: left; font-size: 9pt;
+  }
+  td { padding: 3px 6px; border-bottom: 1px solid #ddd; }
+  tr:nth-child(even) { background: #f5f5f5; }
+  .footer { font-size: 8pt; color: #666; margin-top: 8px;
+    display: flex; justify-content: space-between; }
 
   /* Estado badges */
-  .badge { display: inline-block; padding: 2px 7px; border-radius: 3px;
-    font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-  .estado-habilitado      { background: #e8f5ee; color: #1a6e4a; }
-  .estado-pendiente       { background: #fff8e1; color: #b8860b; }
-  .estado-rechazado       { background: #fdecea; color: #c0392b; }
-  .estado-inactivo        { background: #f0f0f0; color: #555; }
-  .estado-baja_solicitada { background: #f5f0e8; color: #8a9eaa; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 3px;
+    font-size: 8pt; font-weight: 700; }
+  .estado-habilitado           { background: #e8f5ee; color: #1a6e4a; }
+  .estado-pendiente            { background: #fff8e1; color: #b8860b; }
+  .estado-rechazado            { background: #fdecea; color: #c0392b; }
+  .estado-inactivo             { background: #f0f0f0; color: #555; }
+  .estado-baja_solicitada      { background: #f5f0e8; color: #8a9eaa; }
   .estado-reactivacion_solicitada { background: #e8f0ff; color: #2563eb; }
 
-  /* Section footer */
-  .section-footer { margin-top: 10px; padding-top: 5px; border-top: 1px solid #e0d8ce;
-    font-size: 9px; color: #999; display: flex; justify-content: space-between; }
+  .escudo { width: 14px; height: 14px; object-fit: contain; vertical-align: middle; margin-right: 3px; }
 
-  /* Page break */
   .page-break { page-break-after: always; }
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .page-section { padding: 0; }
+    th { background-color: #2a4f6a !important; color: white !important; }
     table thead { display: table-header-group; }
     tr { page-break-inside: avoid; }
-
     @page {
       size: A4 portrait;
-      margin: 12mm 10mm 16mm;
+      margin: 15mm;
       @bottom-center {
         content: "Página " counter(page) " de " counter(pages);
         font-size: 8pt; color: #999; font-family: Arial, sans-serif;

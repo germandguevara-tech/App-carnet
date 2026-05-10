@@ -62,23 +62,11 @@ export default function ModalReporte({ onClose, torneos, clubes, defaultTorneoId
     setVistaPrevia(true);
   }
 
-  function handleImprimir() {
-    const html = buildHTML();
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    // Wait for images to load before printing
-    win.onload = () => setTimeout(() => win.print(), 300);
-    setTimeout(() => { if (!win.closed) win.print(); }, 1200);
-  }
-
   async function handlePDF() {
     setGenerando(true);
     try {
       const { generarPDF } = await import("../../utils/reportePDF");
-      const doc = generarPDF({
+      const doc = await generarPDF({
         jugadores: getJugadoresFiltrados(),
         clubes,
         torneoNombre: getTorneoNombre(),
@@ -173,13 +161,6 @@ export default function ModalReporte({ onClose, torneos, clubes, defaultTorneoId
               🔍 Vista previa
             </button>
             <button
-              style={{ ...s.btn("#2563eb"), opacity: (!torneoId || cargando || total === 0) ? 0.5 : 1 }}
-              onClick={handleImprimir}
-              disabled={!torneoId || cargando || total === 0}
-            >
-              🖨️ Imprimir
-            </button>
-            <button
               style={{ ...s.btn("#c0392b"), opacity: (!torneoId || cargando || total === 0 || generando) ? 0.5 : 1 }}
               onClick={handlePDF}
               disabled={!torneoId || cargando || total === 0 || generando}
@@ -203,7 +184,6 @@ export default function ModalReporte({ onClose, torneos, clubes, defaultTorneoId
               <div style={{ fontSize:15, fontWeight:600, color:"#1e3a4a" }}>Vista previa — {getTorneoNombre()}</div>
             </div>
             <div style={{ display:"flex", gap:8 }}>
-              <button style={s.btn("#2563eb")} onClick={handleImprimir}>🖨️ Imprimir</button>
               <button
                 style={{ ...s.btn("#c0392b"), opacity: generando ? 0.6 : 1 }}
                 onClick={handlePDF}

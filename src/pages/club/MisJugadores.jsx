@@ -11,13 +11,13 @@ const ESTADO_INFO = {
   inactivo: { bg:"#f5f0e8", color:"#444", texto:"🚫 Inactivo" },
 };
 
-export default function MisJugadores({ userData, clubData, onVolver, onReinscribir }) {
+export default function MisJugadores({ userData, clubData, torneoActivo, onVolver, onReinscribir }) {
   const [jugadores, setJugadores] = useState([]);
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
-  const inscripcionActiva = clubData?.torneoActivo === true || clubData?.habilitado !== false;
+  const inscripcionActiva = torneoActivo !== false;
 
   useEffect(() => { cargarJugadores(); }, [userData]);
 
@@ -35,9 +35,10 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
     await cargarJugadores();
   }
 
-  const categorias = [...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
+  const jugadoresVisibles = inscripcionActiva ? jugadores : jugadores.filter(j => j.estado === "habilitado");
+  const categorias = [...new Set(jugadoresVisibles.map(j => j.categoria).filter(Boolean))];
 
-  const jugadoresFiltrados = jugadores.filter(j => {
+  const jugadoresFiltrados = jugadoresVisibles.filter(j => {
     const coincideEstado = filtroEstado ? j.estado === filtroEstado : true;
     const coincideCategoria = filtroCategoria ? j.categoria === filtroCategoria : true;
     const coincideBusqueda = busqueda ? `${j.apellido} ${j.nombre}`.toLowerCase().includes(busqueda.toLowerCase()) : true;
@@ -55,15 +56,17 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
         <input style={{ width:"100%", padding:"10px 14px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box" }}
           placeholder="🔍 Buscar por nombre..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
         <div style={{ display:"flex", gap:8 }}>
-          <select style={{ flex:1, padding:"10px 12px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:13, outline:"none", background:"white" }}
-            value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
-            <option value="">Todos los estados</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="habilitado">Habilitado</option>
-            <option value="rechazado">Rechazado</option>
-            <option value="baja_solicitada">Baja solicitada</option>
-            <option value="inactivo">Inactivo</option>
-          </select>
+          {inscripcionActiva && (
+            <select style={{ flex:1, padding:"10px 12px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:13, outline:"none", background:"white" }}
+              value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="habilitado">Habilitado</option>
+              <option value="rechazado">Rechazado</option>
+              <option value="baja_solicitada">Baja solicitada</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          )}
           <select style={{ flex:1, padding:"10px 12px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:13, outline:"none", background:"white" }}
             value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
             <option value="">Todas las categorías</option>

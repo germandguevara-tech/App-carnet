@@ -127,6 +127,7 @@ export default function ReinscripcionPublica() {
   const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [linkInvalido, setLinkInvalido] = useState(false);
+  const [inscripcionCerrada, setInscripcionCerrada] = useState(false);
   const [cropperSrc, setCropperSrc] = useState(null);
   const [cropperTarget, setCropperTarget] = useState(null);
   const [mostrarInstrucciones, setMostrarInstrucciones] = useState(() => !localStorage.getItem("instrucciones_vistas"));
@@ -163,6 +164,11 @@ export default function ReinscripcionPublica() {
       const snapTorneo = await getDocs(query(collection(db, "torneos_carnet"), where("__name__", "==", jugador.torneoId)));
       if (!snapTorneo.empty) {
         const torneo = snapTorneo.docs[0].data();
+        if (torneo.estado !== "activo") {
+          setInscripcionCerrada(true);
+          setCargando(false);
+          return;
+        }
         setTorneoData(torneo);
         const catItems = torneo.categorias || [];
         if (catItems.length > 0) {
@@ -296,6 +302,16 @@ export default function ReinscripcionPublica() {
         <div style={{ fontSize:48, marginBottom:"1rem" }}>🔒</div>
         <div style={{ fontSize:18, fontWeight:600, color:"#1e3a4a", marginBottom:8 }}>Link no válido</div>
         <div style={{ fontSize:14, color:"#4a6070" }}>Este link no es válido o ya fue utilizado.</div>
+      </div>
+    </div>
+  );
+
+  if (inscripcionCerrada) return (
+    <div style={{ minHeight:"100vh", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"sans-serif", padding:"2rem" }}>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ fontSize:48, marginBottom:"1rem" }}>🔒</div>
+        <div style={{ fontSize:18, fontWeight:600, color:"#1e3a4a", marginBottom:8 }}>Inscripción cerrada</div>
+        <div style={{ fontSize:14, color:"#4a6070" }}>La inscripción está cerrada. Consultá con tu club para más información.</div>
       </div>
     </div>
   );

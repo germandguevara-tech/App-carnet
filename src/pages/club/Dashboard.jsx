@@ -3,7 +3,7 @@ import { auth, db } from "../../firebase";
 import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
 import Inscripcion from "./Inscripcion";
 import MisJugadores from "./MisJugadores";
@@ -17,13 +17,22 @@ export default function ClubDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ total:0, pendientes:0, habilitados:0, rechazados:0 });
   const [clubData, setClubData] = useState(null);
+  const [torneoActivo, setTorneoActivo] = useState(true);
+  const [toast, setToast] = useState("");
 
   useEffect(() => { cargarDatos(); }, [userData]);
 
   async function cargarDatos() {
     if (!userData?.clubId) return;
     const snapClub = await getDocs(query(collection(db, "clubes_carnet"), where("uid", "==", userData.clubId)));
-    if (!snapClub.empty) setClubData(snapClub.docs[0].data());
+    if (!snapClub.empty) {
+      const club = snapClub.docs[0].data();
+      setClubData(club);
+      if (club.torneoId) {
+        const torneoSnap = await getDoc(doc(db, "torneos_carnet", club.torneoId));
+        if (torneoSnap.exists()) setTorneoActivo(torneoSnap.data().estado === "activo");
+      }
+    }
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), where("clubId", "==", userData.clubId)));
     const jugadores = snap.docs.map(d => d.data());
     setStats({
@@ -32,6 +41,11 @@ export default function ClubDashboard() {
       habilitados: jugadores.filter(j => j.estado === "habilitado").length,
       rechazados: jugadores.filter(j => j.estado === "rechazado").length,
     });
+  }
+
+  function mostrarToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3500);
   }
 
   async function handleLogout() {
@@ -88,11 +102,12 @@ export default function ClubDashboard() {
             </button>
             <button
               onClick={() => {
+                if (!torneoActivo) { mostrarToast("La inscripción está cerrada. No se pueden enviar links."); return; }
                 const link = `${window.location.origin}/inscribir/${clubData?.uid}/${clubData?.torneoId}`;
                 const msg = encodeURIComponent(`Hola! Para inscribirte en *${clubData?.nombre}* usá este link:\n\n${link}`);
                 window.open(`https://wa.me/?text=${msg}`, "_blank");
               }}
-              style={{ width:"100%", background:"#25D366", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              style={{ width:"100%", background: torneoActivo ? "#25D366" : "#8a9eaa", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               📲 Compartir link de inscripción
             </button>
             {clubData?.carnetsActivos !== false && (
@@ -117,6 +132,7 @@ export default function ClubDashboard() {
             key={tab}
             clubData={clubData}
             userData={userData}
+            torneoActivo={torneoActivo}
             onVolver={() => setTab("inicio")}
             onReinscribir={handleReinscribir}
           />
@@ -130,6 +146,12 @@ export default function ClubDashboard() {
           <Verificador onVolver={() => setTab("inicio")} />
         )}
       </div>
+
+      {toast && (
+        <div style={{ position:"fixed", bottom:90, left:"50%", transform:"translateX(-50%)", background:"#1e3a4a", color:"white", borderRadius:12, padding:"12px 20px", fontSize:13, fontWeight:500, zIndex:2000, maxWidth:"90vw", textAlign:"center", boxShadow:"0 4px 16px rgba(0,0,0,0.2)" }}>
+          {toast}
+        </div>
+      )}
 
       {tab !== "carnets" && (
         <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"white", borderTop:"1px solid #ede5d5", display:"flex", padding:"8px 0 12px" }}>

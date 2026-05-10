@@ -150,9 +150,7 @@ export default function InscripcionPublica() {
       const torneo = snapTorneo.docs[0].data();
       setTorneoData(torneo);
 
-      const torneoActivo = torneo.estado === "activo";
-      const clubHabilitado = club.habilitado !== false;
-      if (!torneoActivo && !clubHabilitado) { setInscripcionCerrada(true); setCargando(false); return; }
+      if (torneo.estado !== "activo") { setInscripcionCerrada(true); setCargando(false); return; }
 
       const catItems = torneo.categorias || [];
       if (catItems.length > 0) {
@@ -303,7 +301,7 @@ export default function InscripcionPublica() {
       <div style={{ textAlign:"center" }}>
         <div style={{ fontSize:48, marginBottom:"1rem" }}>🔒</div>
         <div style={{ fontSize:18, fontWeight:600, color:"#1e3a4a", marginBottom:8 }}>Inscripción cerrada</div>
-        <div style={{ fontSize:14, color:"#4a6070" }}>La inscripción no está disponible en este momento.</div>
+        <div style={{ fontSize:14, color:"#4a6070" }}>La inscripción está cerrada. Consultá con tu club para más información.</div>
       </div>
     </div>
   );

@@ -1,11 +1,20 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { urlVisualizacion } from "./drive";
 
 const DARK  = [26, 47, 74];   // #1a2f4a
 const MID   = [46, 79, 106];  // #2e4f6a
 const GOLD  = [201, 168, 76]; // #c9a84c
 const STRIP = [247, 243, 238];
 const GRAY  = [150, 150, 150];
+
+// Y where table content starts after a full header (no-club mode)
+// top(12) + line offset(11) + gap(3) + catBlock(11) = 37
+const HEADER_H_GENERAL = 37;
+
+// Y where table content starts after a full header (por-club mode)
+// Logo rows push the header taller: top(12) + club-name row(9) + gold-line(4) + separator(3) + gap(3) + catBlock(11) = 42
+const HEADER_H_CLUB = 42;
 
 function formatFecha(f) {
   if (!f) return "—";
@@ -20,7 +29,17 @@ function estadoLabel(e) {
   return map[e] || e || "—";
 }
 
-export function generarPDF({ jugadores, clubes, torneoNombre, temporada, clubFiltroId }) {
+async function fetchBase64(url) {
+  const r = await fetch(url);
+  const blob = await r.blob();
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, clubFiltroId }) {
   const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -29,70 +48,129 @@ export function generarPDF({ jugadores, clubes, torneoNombre, temporada, clubFil
 
   const fecha = new Date().toLocaleDateString("es-AR", { day:"2-digit", month:"2-digit", year:"numeric" });
   const categorias = [...new Set(jugadores.map(j => j.categoria).filter(Boolean))].sort();
+  const HEADER_H = esPorClub ? HEADER_H_CLUB : HEADER_H_GENERAL;
+
+  // Pre-load club logo (may fail due to CORS — falls back to no logo)
+  let logoBase64 = null;
+  if (esPorClub && clubData?.logoUrl) {
+    try {
+      logoBase64 = await fetchBase64(urlVisualizacion(clubData.logoUrl, 200));
+    } catch (_) {
+      logoBase64 = null;
+    }
+  }
 
   function getNombreClub(uid) {
     return clubes.find(c => c.uid === uid)?.nombre || "—";
   }
 
-  function drawPageHeader(doc, cat) {
-    const top = 12;
-
-    // Torneo name centrado
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.text(torneoNombre, W / 2, top, { align:"center" });
-
-    // Temporada o club nombre
-    if (esPorClub && clubData?.nombre) {
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...GRAY);
-      doc.text(clubData.nombre, W / 2, top + 5, { align:"center" });
-    } else if (temporada) {
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...GRAY);
-      doc.text(temporada, W / 2, top + 5, { align:"center" });
-    }
-
-    // Fecha a la derecha
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...GRAY);
-    doc.text(fecha, W - 12, top, { align:"right" });
-
-    // Línea separadora
-    const lineY = top + 8;
-    doc.setDrawColor(...DARK);
-    doc.setLineWidth(0.7);
-    doc.line(12, lineY, W - 12, lineY);
-
-    // Bloque categoría
-    const catY = lineY + 3;
+  function drawCatBlock(y, cat) {
     doc.setFillColor(...DARK);
-    doc.roundedRect(12, catY, W - 24, 7, 1, 1, "F");
+    doc.roundedRect(15, y, W - 30, 7, 1, 1, "F");
     doc.setFillColor(...GOLD);
-    doc.rect(12, catY + 7, W - 24, 1.5, "F");
-
-    doc.setFontSize(10);
+    doc.rect(15, y + 7, W - 30, 1.5, "F");
+    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255);
-    doc.text(cat.toUpperCase(), 16, catY + 5);
-
-    return catY + 11; // Y after the category block
+    doc.text(cat.toUpperCase(), 19, y + 5);
+    return y + 11;
   }
 
-  categorias.forEach((cat, idx) => {
-    if (idx > 0) doc.addPage();
+  function drawFullHeader(cat) {
+    const top = 12;
 
+    if (esPorClub) {
+      // ── Por-club header: logo + prominent club name + gold line ──────
+      if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", 15, 8, 16, 16); } catch (_) {}
+      }
+
+      // Torneo name — small, secondary
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(torneoNombre, W / 2, top, { align:"center" });
+
+      // Club name — large, bold, dark
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...DARK);
+      doc.text(clubData?.nombre || "", W / 2, top + 9, { align:"center" });
+
+      // Gold accent line under club name
+      doc.setDrawColor(...GOLD);
+      doc.setLineWidth(1.5);
+      doc.line(15, top + 13, W - 15, top + 13);
+
+      // Date — right-aligned
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(fecha, W - 15, top, { align:"right" });
+
+      // Dark separator line
+      const lineY = top + 16;
+      doc.setDrawColor(...DARK);
+      doc.setLineWidth(0.7);
+      doc.line(15, lineY, W - 15, lineY);
+
+      return drawCatBlock(lineY + 3, cat); // → HEADER_H_CLUB ≈ 42
+    } else {
+      // ── General header: torneo name + temporada ───────────────────────
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...DARK);
+      doc.text(torneoNombre, W / 2, top, { align:"center" });
+
+      if (temporada) {
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...GRAY);
+        doc.text(temporada, W / 2, top + 7, { align:"center" });
+      }
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(fecha, W - 15, top, { align:"right" });
+
+      const lineY = top + 11;
+      doc.setDrawColor(...DARK);
+      doc.setLineWidth(0.7);
+      doc.line(15, lineY, W - 15, lineY);
+
+      return drawCatBlock(lineY + 3, cat); // → HEADER_H_GENERAL ≈ 37
+    }
+  }
+
+  // Por club: N°(12) + Apellido(80) + DNI(32) + FechaNac(28) + Estado(28) = 180mm
+  // General:  N°(12) + Apellido(57) + DNI(30) + FechaNac(26) + Club(32) + Estado(23) = 180mm
+  function getColStyles() {
+    return esPorClub
+      ? {
+          0: { cellWidth:12, halign:"center", overflow:"hidden" },
+          1: { cellWidth:80, overflow:"linebreak" },
+          2: { cellWidth:32, overflow:"hidden" },
+          3: { cellWidth:28, overflow:"hidden" },
+          4: { cellWidth:28, overflow:"hidden" },
+        }
+      : {
+          0: { cellWidth:12, halign:"center", overflow:"hidden" },
+          1: { cellWidth:57, overflow:"linebreak" },
+          2: { cellWidth:30, overflow:"hidden" },
+          3: { cellWidth:26, overflow:"hidden" },
+          4: { cellWidth:32, overflow:"linebreak" },
+          5: { cellWidth:23, overflow:"hidden" },
+        };
+  }
+
+  let prevFinalY = null;
+
+  categorias.forEach((cat) => {
     const jsCat = jugadores
       .filter(j => j.categoria === cat)
       .sort((a, b) => (a.apellido || "").localeCompare(b.apellido || ""));
-
     if (jsCat.length === 0) return;
-
-    const startY = drawPageHeader(doc, cat);
 
     const columns = esPorClub
       ? ["N°", "Apellido y Nombre", "DNI", "Fecha Nac.", "Estado"]
@@ -103,9 +181,18 @@ export function generarPDF({ jugadores, clubes, torneoNombre, temporada, clubFil
       : [i + 1, `${j.apellido || ""}, ${j.nombre || ""}`, j.dni || "—", formatFecha(j.fechaNacimiento), getNombreClub(j.clubId), estadoLabel(j.estado)]
     );
 
-    const colStyles = esPorClub
-      ? { 0:{cellWidth:10,halign:"center"}, 2:{cellWidth:22}, 3:{cellWidth:22}, 4:{cellWidth:26} }
-      : { 0:{cellWidth:10,halign:"center"}, 2:{cellWidth:22}, 3:{cellWidth:22}, 4:{cellWidth:38}, 5:{cellWidth:26} };
+    let startY;
+    if (prevFinalY === null) {
+      startY = drawFullHeader(cat);
+    } else {
+      const gapY = prevFinalY + 10;
+      if (gapY + 20 > H - 16) {
+        doc.addPage();
+        startY = drawFullHeader(cat);
+      } else {
+        startY = drawCatBlock(gapY, cat);
+      }
+    }
 
     autoTable(doc, {
       startY,
@@ -115,37 +202,40 @@ export function generarPDF({ jugadores, clubes, torneoNombre, temporada, clubFil
       headStyles: {
         fillColor: MID,
         textColor: [255, 255, 255],
-        fontSize: 8.5,
+        fontSize: 9,
         fontStyle: "bold",
-        cellPadding: { top:4, bottom:4, left:5, right:5 },
+        cellPadding: 3,
+        minCellHeight: 8,
+        valign: "middle",
       },
       bodyStyles: {
         fontSize: 9,
         textColor: DARK,
-        cellPadding: { top:4, bottom:4, left:5, right:5 },
+        cellPadding: { top:2.5, bottom:2.5, left:3, right:3 },
       },
       alternateRowStyles: { fillColor: STRIP },
-      columnStyles: colStyles,
+      columnStyles: getColStyles(),
       tableLineColor: [220, 210, 200],
       tableLineWidth: 0.2,
-      margin: { top: startY, left: 12, right: 12, bottom: 16 },
-      didDrawPage: (_data) => {
-        // Redraw header on subsequent pages of the same category
-        drawPageHeader(doc, cat);
+      margin: { top: HEADER_H, left: 15, right: 15, bottom: 16 },
+      didDrawPage: (data) => {
+        if (data.pageNumber > 1) drawFullHeader(cat);
       },
     });
+
+    prevFinalY = doc.lastAutoTable.finalY;
   });
 
-  // Add footers after all pages are drawn
+  // Footers — drawn after all content is placed
   const totalPages = doc.internal.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-    doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...GRAY);
+    doc.setFontSize(8);
     const footerY = H - 6;
-    doc.text(torneoNombre, 12, footerY);
-    doc.text(`Página ${p} de ${totalPages}`, W - 12, footerY, { align:"right" });
+    doc.text(torneoNombre, 15, footerY);
+    doc.text(`Página ${p} de ${totalPages}`, W - 15, footerY, { align:"right" });
   }
 
   return doc;
