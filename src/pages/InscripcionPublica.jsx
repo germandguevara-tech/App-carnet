@@ -140,19 +140,21 @@ export default function InscripcionPublica() {
 
   async function cargarDatos() {
     try {
-      // Verificar torneo primero — si está cerrado no continuar bajo ninguna circunstancia
-      const torneoSnap = await getDoc(doc(db, "torneos_carnet", torneoId));
-      if (!torneoSnap.exists() || torneoSnap.data().estado !== "activo") {
-        setInscripcionCerrada(true);
-        setCargando(false);
-        return;
-      }
-      const torneo = torneoSnap.data();
-      setTorneoData(torneo);
+      const [torneoSnap, snapClub] = await Promise.all([
+        getDoc(doc(db, "torneos_carnet", torneoId)),
+        getDocs(query(collection(db, "clubes_carnet"), where("uid", "==", clubId))),
+      ]);
 
-      const snapClub = await getDocs(query(collection(db, "clubes_carnet"), where("uid", "==", clubId)));
-      if (snapClub.empty) { setInscripcionCerrada(true); setCargando(false); return; }
-      setClubData(snapClub.docs[0].data());
+      if (!torneoSnap.exists() || snapClub.empty) { setInscripcionCerrada(true); setCargando(false); return; }
+
+      const torneo = torneoSnap.data();
+      const club = snapClub.docs[0].data();
+
+      const permitida = torneo.estado === "activo" || club.inscripcionEspecial === true;
+      if (!permitida) { setInscripcionCerrada(true); setCargando(false); return; }
+
+      setTorneoData(torneo);
+      setClubData(club);
 
       const catItems = torneo.categorias || [];
       if (catItems.length > 0) {

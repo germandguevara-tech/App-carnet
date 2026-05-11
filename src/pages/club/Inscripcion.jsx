@@ -151,7 +151,7 @@ async function leerTextoDeImagen(fileOrDataURL) {
   });
 }
 
-export default function Inscripcion({ clubData, userData, onVolver, jugadorAReinscribir }) {
+export default function Inscripcion({ clubData, userData, torneoActivo, onVolver, jugadorAReinscribir }) {
   const [paso, setPaso] = useState(1);
   const [datos, setDatos] = useState({ apellido:"", nombre:"", dni:"", fechaNacimiento:"", categoria:"" });
   const [fotoFrente, setFotoFrente] = useState(null);   // dataURL string
@@ -369,9 +369,7 @@ export default function Inscripcion({ clubData, userData, onVolver, jugadorARein
     </div>
   );
 
-  const torneoActivo = clubData?.torneoActivo === true;
-  const clubHabilitado = clubData?.habilitado !== false;
-  const puedeInscribir = torneoActivo || clubHabilitado;
+  const puedeInscribir = torneoActivo === true || clubData?.inscripcionEspecial === true;
 
   if (clubData && !puedeInscribir) {
     return (

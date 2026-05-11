@@ -24,20 +24,25 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
     if (!userData?.clubId) return;
     if (inscripcionVerificada.current) return;
     if (!clubData?.torneoId) {
+      // No marcar inscripcionVerificada aquí — esperar a que llegue el torneoId
       cargarJugadores(false);
       return;
     }
+    // Tenemos torneoId → marcar verificado y consultar
     inscripcionVerificada.current = true;
-    verificarTorneoYCargar();
+    verificarTorneoYCargar(clubData);
   }, [userData?.clubId, clubData?.torneoId]);
 
-  async function verificarTorneoYCargar() {
+  async function verificarTorneoYCargar(clubSnapshot) {
     try {
-      const torneoSnap = await getDoc(doc(db, "torneos_carnet", clubData.torneoId));
-      const activa = torneoSnap.exists() && torneoSnap.data().estado === "activo";
-      console.log("torneo verificado, activa:", activa);
+      const torneoSnap = await getDoc(doc(db, "torneos_carnet", clubSnapshot.torneoId));
+      console.log("estado torneo:", torneoSnap.data()?.estado);
+      console.log("inscripcionEspecial:", clubSnapshot.inscripcionEspecial);
+      const activa = (torneoSnap.exists() && torneoSnap.data().estado === "activo") || clubSnapshot.inscripcionEspecial === true;
+      console.log("activa calculada:", activa);
       cargarJugadores(activa);
-    } catch (_) {
+    } catch (err) {
+      console.log("error en verificarTorneoYCargar:", err.message);
       cargarJugadores(false);
     }
   }

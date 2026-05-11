@@ -122,6 +122,7 @@ export default function ClubDashboard() {
           <Inscripcion
             clubData={clubData}
             userData={userData}
+            torneoActivo={torneoActivo}
             jugadorAReinscribir={jugadorAReinscribir}
             onVolver={() => { setTab("inicio"); setJugadorAReinscribir(null); cargarDatos(); }}
           />

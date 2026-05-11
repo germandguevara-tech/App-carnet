@@ -238,7 +238,7 @@ export default function Clubes() {
         logoUrl = url;
       }
       await addDoc(collection(db, "Usuarios"), { email:form.email, Rol:"club", rol:"club", Nombre:form.nombre, uid:cred.user.uid, clubId:cred.user.uid, activo:true });
-      await addDoc(collection(db, "clubes_carnet"), { nombre:form.nombre, email:form.email, torneoId:form.torneoId, uid:cred.user.uid, habilitado:true, permitirGaleria:false, creadoEn:new Date(), logoUrl });
+      await addDoc(collection(db, "clubes_carnet"), { nombre:form.nombre, email:form.email, torneoId:form.torneoId, uid:cred.user.uid, permitirGaleria:false, creadoEn:new Date(), logoUrl });
       if (logoPreview) URL.revokeObjectURL(logoPreview);
       setForm({ nombre:"", email:"", password:"", torneoId:"" });
       setLogoFile(null);
@@ -332,7 +332,7 @@ export default function Clubes() {
             <tr>
               <th style={s.th}>Club</th>
               <th style={s.th}>Torneo</th>
-              <th style={{ ...s.th, textAlign:"center" }}>Inscripción</th>
+              <th style={{ ...s.th, textAlign:"center" }}>Insc. Especial</th>
               <th style={{ ...s.th, textAlign:"center" }}>Galería</th>
               <th style={{ ...s.th, textAlign:"center" }}>Carnets</th>
               <th style={{ ...s.th, textAlign:"center" }}>Usuarios</th>
@@ -362,9 +362,15 @@ export default function Clubes() {
                 </td>
                 <td style={s.td}>{getNombreTorneo(c.torneoId)}</td>
                 <td style={{ ...s.td, textAlign:"center" }}>
-                  <div style={{ display:"flex", justifyContent:"center" }}>
-                    <Switch value={c.habilitado} onChange={() => toggle(c.id, "habilitado", c.habilitado)} />
-                  </div>
+                  {(() => {
+                    const torneoEstado = torneos.find(t => t.id === c.torneoId)?.estado;
+                    if (torneoEstado === "activo") return <span style={{ fontSize:11, color:"#8a9eaa" }}>—</span>;
+                    return (
+                      <div style={{ display:"flex", justifyContent:"center" }}>
+                        <Switch value={c.inscripcionEspecial === true} onChange={() => toggle(c.id, "inscripcionEspecial", c.inscripcionEspecial === true)} />
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td style={{ ...s.td, textAlign:"center" }}>
                   <div style={{ display:"flex", justifyContent:"center" }}>
