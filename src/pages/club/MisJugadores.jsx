@@ -20,15 +20,19 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userData?.clubId && clubData?.torneoId) cargarJugadores();
+    if (userData?.clubId) cargarJugadores();
   }, [userData?.clubId, clubData?.torneoId]);
 
   async function cargarJugadores() {
     setLoading(true);
-    try {
-      const torneoSnap = await getDoc(doc(db, "torneos_carnet", clubData.torneoId));
-      setInscripcionActiva(torneoSnap.exists() && torneoSnap.data().estado === "activo");
-    } catch (_) {
+    if (clubData?.torneoId) {
+      try {
+        const torneoSnap = await getDoc(doc(db, "torneos_carnet", clubData.torneoId));
+        setInscripcionActiva(torneoSnap.exists() && torneoSnap.data().estado === "activo");
+      } catch (_) {
+        setInscripcionActiva(false);
+      }
+    } else {
       setInscripcionActiva(false);
     }
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), where("clubId", "==", userData.clubId)));
