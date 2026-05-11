@@ -78,7 +78,11 @@ export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, c
       // ── Por-club header: logo 25×25 + prominent club name + gold line ──
       if (logoBase64 && logoDims) {
         try {
-          doc.addImage(logoBase64, "PNG", 15, 6, logoDims.w, logoDims.h, undefined, "FAST");
+          const formatoLogo = logoBase64.startsWith("data:image/jpeg") ? "JPEG"
+            : logoBase64.startsWith("data:image/png") ? "PNG"
+            : logoBase64.startsWith("data:image/webp") ? "WEBP"
+            : "PNG";
+          doc.addImage(logoBase64, formatoLogo, 15, 6, logoDims.w, logoDims.h, undefined, "FAST");
         } catch (err) {
           console.error("addImage error:", err);
         }
