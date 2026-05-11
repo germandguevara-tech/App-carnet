@@ -79,7 +79,9 @@ export default function ClubDashboard() {
       )}
 
       <div style={{ padding: tab === "carnets" ? 0 : "1.25rem" }}>
-        {tab === "inicio" && (
+        {tab === "inicio" && (() => {
+          const puedeInscribir = torneoActivo === true || clubData?.inscripcionEspecial === true;
+          return (
           <div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:"1.25rem" }}>
               {[
@@ -94,20 +96,22 @@ export default function ClubDashboard() {
                 </div>
               ))}
             </div>
-            <button onClick={() => { setJugadorAReinscribir(null); setTab("inscripcion"); }} style={{ width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:14, padding:"16px", fontSize:16, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              <span style={{ fontSize:20 }}>+</span> Inscribir jugador
-            </button>
+            {puedeInscribir && (
+              <button onClick={() => { setJugadorAReinscribir(null); setTab("inscripcion"); }} style={{ width:"100%", background:"#1e3a4a", color:"white", border:"none", borderRadius:14, padding:"16px", fontSize:16, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <span style={{ fontSize:20 }}>+</span> Inscribir jugador
+              </button>
+            )}
             <button onClick={() => setTab("jugadores")} style={{ width:"100%", background:"white", color:"#1e3a4a", border:"1.5px solid #1e3a4a", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               👥 Ver mis jugadores
             </button>
             <button
               onClick={() => {
-                if (torneoActivo !== true) { mostrarToast("La inscripción está cerrada. No se pueden enviar links."); return; }
+                if (!puedeInscribir) { mostrarToast("La inscripción está cerrada. No se pueden enviar links."); return; }
                 const link = `${window.location.origin}/inscribir/${clubData?.uid}/${clubData?.torneoId}`;
                 const msg = encodeURIComponent(`Hola! Para inscribirte en *${clubData?.nombre}* usá este link:\n\n${link}`);
                 window.open(`https://wa.me/?text=${msg}`, "_blank");
               }}
-              style={{ width:"100%", background: torneoActivo === true ? "#25D366" : "#8a9eaa", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              style={{ width:"100%", background: puedeInscribir ? "#25D366" : "#8a9eaa", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               📲 Compartir link de inscripción
             </button>
             {clubData?.carnetsActivos !== false && (
@@ -116,7 +120,8 @@ export default function ClubDashboard() {
               </button>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {tab === "inscripcion" && (
           <Inscripcion
@@ -158,7 +163,7 @@ export default function ClubDashboard() {
         <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"white", borderTop:"1px solid #ede5d5", display:"flex", padding:"8px 0 12px" }}>
           {[
             { id:"inicio", icon:"🏠", label:"Inicio" },
-            { id:"inscripcion", icon:"➕", label:"Inscribir" },
+            ...((torneoActivo === true || clubData?.inscripcionEspecial === true) ? [{ id:"inscripcion", icon:"➕", label:"Inscribir" }] : []),
             { id:"jugadores", icon:"👥", label:"Jugadores" },
             ...(clubData?.carnetsActivos !== false ? [{ id:"carnets", icon:"🪪", label:"Carnets" }] : []),
             { id:"verificar", icon:"🔍", label:"Verificar" },
