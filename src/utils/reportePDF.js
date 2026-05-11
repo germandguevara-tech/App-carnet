@@ -50,7 +50,7 @@ export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, c
       const img = new Image();
       img.src = logoBase64;
       await new Promise(resolve => { img.onload = resolve; });
-      const maxSize = 30;
+      const maxSize = 20;
       const ratio = img.width / img.height;
       logoDims = {
         w: ratio >= 1 ? maxSize : maxSize * ratio,
