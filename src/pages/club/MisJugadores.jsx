@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase";
 import { collection, getDocs, query, where, doc, getDoc, updateDoc } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
@@ -18,23 +18,33 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
+  const inscripcionVerificada = useRef(false);
 
   useEffect(() => {
-    if (userData?.clubId) cargarJugadores();
+    if (!userData?.clubId) return;
+    if (inscripcionVerificada.current) return;
+    if (!clubData?.torneoId) {
+      cargarJugadores(false);
+      return;
+    }
+    inscripcionVerificada.current = true;
+    verificarTorneoYCargar();
   }, [userData?.clubId, clubData?.torneoId]);
 
-  async function cargarJugadores() {
-    setLoading(true);
-    if (clubData?.torneoId) {
-      try {
-        const torneoSnap = await getDoc(doc(db, "torneos_carnet", clubData.torneoId));
-        setInscripcionActiva(torneoSnap.exists() && torneoSnap.data().estado === "activo");
-      } catch (_) {
-        setInscripcionActiva(false);
-      }
-    } else {
-      setInscripcionActiva(false);
+  async function verificarTorneoYCargar() {
+    try {
+      const torneoSnap = await getDoc(doc(db, "torneos_carnet", clubData.torneoId));
+      const activa = torneoSnap.exists() && torneoSnap.data().estado === "activo";
+      console.log("torneo verificado, activa:", activa);
+      cargarJugadores(activa);
+    } catch (_) {
+      cargarJugadores(false);
     }
+  }
+
+  async function cargarJugadores(activa) {
+    setLoading(true);
+    setInscripcionActiva(activa);
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), where("clubId", "==", userData.clubId)));
     setJugadores(snap.docs.map(d => ({ id:d.id, ...d.data() })));
     setLoading(false);
@@ -43,7 +53,7 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
   async function solicitarBaja(id) {
     if (!confirm("¿Querés solicitar la baja de este jugador?")) return;
     await updateDoc(doc(db, "jugadores_carnet", id), { estado:"baja_solicitada" });
-    await cargarJugadores();
+    await cargarJugadores(inscripcionActiva);
   }
 
   const jugadoresVisibles = inscripcionActiva ? jugadores : jugadores.filter(j => j.estado === "habilitado");
@@ -151,7 +161,7 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
                 )}
                 {j.estado === "inactivo" && inscripcionActiva && (
                   <button
-                    onClick={() => updateDoc(doc(db, "jugadores_carnet", j.id), { estado:"reactivacion_solicitada" }).then(cargarJugadores)}
+                    onClick={() => updateDoc(doc(db, "jugadores_carnet", j.id), { estado:"reactivacion_solicitada" }).then(() => cargarJugadores(inscripcionActiva))}
                     style={{ background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}
                   >
                     🔄 Solicitar reactivación
