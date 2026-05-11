@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase";
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, updateDoc } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
 
 const ESTADO_INFO = {
@@ -11,19 +11,26 @@ const ESTADO_INFO = {
   inactivo: { bg:"#f5f0e8", color:"#444", texto:"🚫 Inactivo" },
 };
 
-export default function MisJugadores({ userData, clubData, torneoActivo, onVolver, onReinscribir }) {
+export default function MisJugadores({ userData, clubData, onVolver, onReinscribir }) {
   const [jugadores, setJugadores] = useState([]);
+  const [inscripcionActiva, setInscripcionActiva] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
-  const inscripcionActiva = torneoActivo === true;
 
-  useEffect(() => { cargarJugadores(); }, [userData]);
+  useEffect(() => {
+    if (userData?.clubId && clubData?.torneoId) cargarJugadores();
+  }, [userData?.clubId, clubData?.torneoId]);
 
   async function cargarJugadores() {
-    if (!userData?.clubId) return;
     setLoading(true);
+    try {
+      const torneoSnap = await getDoc(doc(db, "torneos_carnet", clubData.torneoId));
+      setInscripcionActiva(torneoSnap.exists() && torneoSnap.data().estado === "activo");
+    } catch (_) {
+      setInscripcionActiva(false);
+    }
     const snap = await getDocs(query(collection(db, "jugadores_carnet"), where("clubId", "==", userData.clubId)));
     setJugadores(snap.docs.map(d => ({ id:d.id, ...d.data() })));
     setLoading(false);

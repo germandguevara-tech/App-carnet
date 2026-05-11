@@ -140,17 +140,19 @@ export default function InscripcionPublica() {
 
   async function cargarDatos() {
     try {
-      const snapClub = await getDocs(query(collection(db, "clubes_carnet"), where("uid", "==", clubId)));
-      if (snapClub.empty) { setInscripcionCerrada(true); setCargando(false); return; }
-      const club = snapClub.docs[0].data();
-      setClubData(club);
-
+      // Verificar torneo primero — si está cerrado no continuar bajo ninguna circunstancia
       const torneoSnap = await getDoc(doc(db, "torneos_carnet", torneoId));
-      if (!torneoSnap.exists()) { setInscripcionCerrada(true); setCargando(false); return; }
+      if (!torneoSnap.exists() || torneoSnap.data().estado !== "activo") {
+        setInscripcionCerrada(true);
+        setCargando(false);
+        return;
+      }
       const torneo = torneoSnap.data();
       setTorneoData(torneo);
 
-      if (torneo.estado !== "activo") { setInscripcionCerrada(true); setCargando(false); return; }
+      const snapClub = await getDocs(query(collection(db, "clubes_carnet"), where("uid", "==", clubId)));
+      if (snapClub.empty) { setInscripcionCerrada(true); setCargando(false); return; }
+      setClubData(snapClub.docs[0].data());
 
       const catItems = torneo.categorias || [];
       if (catItems.length > 0) {
@@ -297,11 +299,11 @@ export default function InscripcionPublica() {
   );
 
   if (inscripcionCerrada) return (
-    <div style={{ minHeight:"100vh", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"sans-serif", padding:"2rem" }}>
-      <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:48, marginBottom:"1rem" }}>🔒</div>
-        <div style={{ fontSize:18, fontWeight:600, color:"#1e3a4a", marginBottom:8 }}>Inscripción cerrada</div>
-        <div style={{ fontSize:14, color:"#4a6070" }}>La inscripción está cerrada. Consultá con tu club para más información.</div>
+    <div style={{ minHeight:"100vh", background:"#f5f0e8", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"sans-serif", padding:"3rem 2rem", textAlign:"center" }}>
+      <div>
+        <h2 style={{ color:"#1e3a4a", marginBottom:"1rem" }}>Inscripción cerrada</h2>
+        <p style={{ color:"#4a6070", marginBottom:"0.5rem" }}>El período de inscripción para este torneo ha finalizado.</p>
+        <p style={{ color:"#4a6070" }}>Consultá con tu club para más información.</p>
       </div>
     </div>
   );
