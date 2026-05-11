@@ -74,6 +74,7 @@ export default function Inscriptos() {
     setTorneos(listaTorneos);
     const activo = listaTorneos.find(t => t.estado === "activo");
     if (activo) setTorneoFiltro(activo.id);
+    else if (listaTorneos.length > 0) setTorneoFiltro(listaTorneos[0].id);
     const snapC = await getDocs(collection(db, "clubes_carnet"));
     setClubes(snapC.docs.map(d => ({ id:d.id, ...d.data() })));
     const snapCats = await getDocs(collection(db, "categorias_carnet"));
