@@ -21,7 +21,7 @@ function estadoLabel(e) {
   return map[e] || e || "—";
 }
 
-export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada, clubFiltroId }) {
+export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada, clubFiltroId, logoBase64 = null }) {
   const esPorClub = !!clubFiltroId;
   const clubData = esPorClub ? clubes.find(c => c.uid === clubFiltroId) : null;
   const fecha = new Date().toLocaleDateString("es-AR", { day:"2-digit", month:"2-digit", year:"numeric" });
@@ -37,6 +37,7 @@ export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada,
   }
 
   const headerHTML = (cat) => `
+    ${esPorClub && logoBase64 ? `<div style="text-align:center;margin-bottom:8px"><img src="${logoBase64}" style="height:50px;object-fit:contain"></div>` : ""}
     <h2>${torneoNombre}</h2>
     ${temporada ? `<p class="subtitulo">${temporada}</p>` : ""}
     ${esPorClub && clubData?.nombre ? `<p class="subtitulo">${clubData.nombre}</p>` : ""}

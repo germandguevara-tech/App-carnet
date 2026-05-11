@@ -1,6 +1,5 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { urlVisualizacion } from "./drive";
 
 const DARK  = [26, 47, 74];   // #1a2f4a
 const MID   = [46, 79, 106];  // #2e4f6a
@@ -13,8 +12,8 @@ const GRAY  = [150, 150, 150];
 const HEADER_H_GENERAL = 37;
 
 // Y where table content starts after a full header (por-club mode)
-// Logo rows push the header taller: top(12) + club-name row(9) + gold-line(4) + separator(3) + gap(3) + catBlock(11) = 42
-const HEADER_H_CLUB = 42;
+// Logo 25mm (y=8→33) + text rows + gold-line + separator + gap + catBlock = 46
+const HEADER_H_CLUB = 46;
 
 function formatFecha(f) {
   if (!f) return "—";
@@ -29,17 +28,7 @@ function estadoLabel(e) {
   return map[e] || e || "—";
 }
 
-async function fetchBase64(url) {
-  const r = await fetch(url);
-  const blob = await r.blob();
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  });
-}
-
-export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, clubFiltroId }) {
+export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, clubFiltroId, logoBase64 = null }) {
   const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -50,18 +39,24 @@ export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, c
   const categorias = [...new Set(jugadores.map(j => j.categoria).filter(Boolean))].sort();
   const HEADER_H = esPorClub ? HEADER_H_CLUB : HEADER_H_GENERAL;
 
-  // Pre-load club logo (may fail due to CORS — falls back to no logo)
-  let logoBase64 = null;
-  if (esPorClub && clubData?.logoUrl) {
-    try {
-      logoBase64 = await fetchBase64(urlVisualizacion(clubData.logoUrl, 200));
-    } catch (_) {
-      logoBase64 = null;
-    }
-  }
-
   function getNombreClub(uid) {
     return clubes.find(c => c.uid === uid)?.nombre || "—";
+  }
+
+  // Pre-compute logo dimensions (async, before the sync drawing loop)
+  let logoDims = null;
+  if (esPorClub && logoBase64) {
+    try {
+      const img = new Image();
+      img.src = logoBase64;
+      await new Promise(resolve => { img.onload = resolve; });
+      const maxSize = 30;
+      const ratio = img.width / img.height;
+      logoDims = {
+        w: ratio >= 1 ? maxSize : maxSize * ratio,
+        h: ratio >= 1 ? maxSize / ratio : maxSize,
+      };
+    } catch (_) {}
   }
 
   function drawCatBlock(y, cat) {
@@ -80,41 +75,45 @@ export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, c
     const top = 12;
 
     if (esPorClub) {
-      // ── Por-club header: logo + prominent club name + gold line ──────
-      if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", 15, 8, 16, 16); } catch (_) {}
+      // ── Por-club header: logo 25×25 + prominent club name + gold line ──
+      if (logoBase64 && logoDims) {
+        try {
+          doc.addImage(logoBase64, "PNG", 15, 6, logoDims.w, logoDims.h, undefined, "FAST");
+        } catch (err) {
+          console.error("addImage error:", err);
+        }
       }
 
-      // Torneo name — small, secondary
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...GRAY);
-      doc.text(torneoNombre, W / 2, top, { align:"center" });
-
-      // Club name — large, bold, dark
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...DARK);
-      doc.text(clubData?.nombre || "", W / 2, top + 9, { align:"center" });
-
-      // Gold accent line under club name
-      doc.setDrawColor(...GOLD);
-      doc.setLineWidth(1.5);
-      doc.line(15, top + 13, W - 15, top + 13);
-
-      // Date — right-aligned
+      // Date — top right
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...GRAY);
       doc.text(fecha, W - 15, top, { align:"right" });
 
-      // Dark separator line
-      const lineY = top + 16;
+      // Torneo name — small, secondary, centered
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(torneoNombre, W / 2, top + 3, { align:"center" });
+
+      // Club name — large, bold, dark, centered
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...DARK);
+      doc.text(clubData?.nombre || "", W / 2, top + 13, { align:"center" });
+
+      // Gold accent line under club name
+      doc.setDrawColor(...GOLD);
+      doc.setLineWidth(1.5);
+      doc.line(15, top + 18, W - 15, top + 18);
+
+      // Dark separator line (after logo ends at y=33)
+      const lineY = top + 21;
       doc.setDrawColor(...DARK);
       doc.setLineWidth(0.7);
       doc.line(15, lineY, W - 15, lineY);
 
-      return drawCatBlock(lineY + 3, cat); // → HEADER_H_CLUB ≈ 42
+      return drawCatBlock(lineY + 3, cat); // → HEADER_H_CLUB ≈ 46
     } else {
       // ── General header: torneo name + temporada ───────────────────────
       doc.setFontSize(16);

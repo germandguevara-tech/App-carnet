@@ -3,6 +3,34 @@ import { db } from "../../firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { generarReporteHTML } from "../../utils/reporteHTML";
 
+const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
+
+function extraerFileId(url) {
+  if (!url) return null;
+  const m1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) return m1[1];
+  const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2) return m2[1];
+  return null;
+}
+
+async function cargarLogoBase64(logoUrl) {
+  const fileId = extraerFileId(logoUrl);
+  if (!fileId) return null;
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "obtenerImagenBase64", fileId }),
+    });
+    const data = await resp.json();
+    if (data.error) { console.error("Logo proxy error:", data.error); return null; }
+    return `data:${data.mimeType};base64,${data.base64}`;
+  } catch (err) {
+    console.error("cargarLogoBase64 error:", err);
+    return null;
+  }
+}
+
 const s = {
   label: { fontSize:11, color:"#4a6070", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", display:"block", marginBottom:4 },
   select: { width:"100%", padding:"9px 12px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", background:"white" },
@@ -47,24 +75,34 @@ export default function ModalReporte({ onClose, torneos, clubes, defaultTorneoId
     return torneos.find(t => t.id === torneoId)?.nombre || "";
   }
 
-  function buildHTML() {
+  function buildHTML(logoBase64 = null) {
     return generarReporteHTML({
       jugadores: getJugadoresFiltrados(),
       clubes,
       torneoNombre: getTorneoNombre(),
       temporada: new Date().getFullYear().toString(),
       clubFiltroId: clubId || null,
+      logoBase64,
     });
   }
 
-  function handleVistaPrevia() {
-    setPreviewHTML(buildHTML());
+  async function handleVistaPrevia() {
+    const clubSeleccionado = clubId ? clubes.find(c => c.uid === clubId) : null;
+    const logoBase64 = clubSeleccionado?.logoUrl
+      ? await cargarLogoBase64(clubSeleccionado.logoUrl)
+      : null;
+    setPreviewHTML(buildHTML(logoBase64));
     setVistaPrevia(true);
   }
 
   async function handlePDF() {
     setGenerando(true);
     try {
+      const clubSeleccionado = clubId ? clubes.find(c => c.uid === clubId) : null;
+      const logoBase64 = clubSeleccionado?.logoUrl
+        ? await cargarLogoBase64(clubSeleccionado.logoUrl)
+        : null;
+
       const { generarPDF } = await import("../../utils/reportePDF");
       const doc = await generarPDF({
         jugadores: getJugadoresFiltrados(),
@@ -72,6 +110,7 @@ export default function ModalReporte({ onClose, torneos, clubes, defaultTorneoId
         torneoNombre: getTorneoNombre(),
         temporada: new Date().getFullYear().toString(),
         clubFiltroId: clubId || null,
+        logoBase64,
       });
       const nombre = `Reporte-${getTorneoNombre().replace(/\s+/g,"-")}-${new Date().toLocaleDateString("es-AR").replace(/\//g,"-")}.pdf`;
       doc.save(nombre);
