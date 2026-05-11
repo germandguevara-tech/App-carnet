@@ -145,9 +145,9 @@ export default function InscripcionPublica() {
       const club = snapClub.docs[0].data();
       setClubData(club);
 
-      const snapTorneo = await getDocs(query(collection(db, "torneos_carnet"), where("__name__", "==", torneoId)));
-      if (snapTorneo.empty) { setInscripcionCerrada(true); setCargando(false); return; }
-      const torneo = snapTorneo.docs[0].data();
+      const torneoSnap = await getDoc(doc(db, "torneos_carnet", torneoId));
+      if (!torneoSnap.exists()) { setInscripcionCerrada(true); setCargando(false); return; }
+      const torneo = torneoSnap.data();
       setTorneoData(torneo);
 
       if (torneo.estado !== "activo") { setInscripcionCerrada(true); setCargando(false); return; }

@@ -17,7 +17,7 @@ export default function ClubDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ total:0, pendientes:0, habilitados:0, rechazados:0 });
   const [clubData, setClubData] = useState(null);
-  const [torneoActivo, setTorneoActivo] = useState(true);
+  const [torneoActivo, setTorneoActivo] = useState(null);
   const [toast, setToast] = useState("");
 
   useEffect(() => { cargarDatos(); }, [userData]);
@@ -102,12 +102,12 @@ export default function ClubDashboard() {
             </button>
             <button
               onClick={() => {
-                if (!torneoActivo) { mostrarToast("La inscripción está cerrada. No se pueden enviar links."); return; }
+                if (torneoActivo !== true) { mostrarToast("La inscripción está cerrada. No se pueden enviar links."); return; }
                 const link = `${window.location.origin}/inscribir/${clubData?.uid}/${clubData?.torneoId}`;
                 const msg = encodeURIComponent(`Hola! Para inscribirte en *${clubData?.nombre}* usá este link:\n\n${link}`);
                 window.open(`https://wa.me/?text=${msg}`, "_blank");
               }}
-              style={{ width:"100%", background: torneoActivo ? "#25D366" : "#8a9eaa", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              style={{ width:"100%", background: torneoActivo === true ? "#25D366" : "#8a9eaa", color:"white", border:"none", borderRadius:14, padding:"14px", fontSize:15, fontWeight:600, cursor:"pointer", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               📲 Compartir link de inscripción
             </button>
             {clubData?.carnetsActivos !== false && (
