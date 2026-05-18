@@ -23,6 +23,8 @@ const MOTIVOS_RECHAZO = [
   "Datos no coinciden con el documento",
   "Foto carnet de cuerpo entero (debe ser busto)",
   "Fondo de foto carnet inadecuado",
+  "Categoría incorrecta",
+  "Foto de foto o credencial",
   "Otro motivo"
 ];
 

@@ -43,7 +43,18 @@ export default function Torneos() {
   const [editandoChipEditIdx, setEditandoChipEditIdx] = useState(null);
   const [editandoChipEditRangos, setEditandoChipEditRangos] = useState({ anioNacDesde:"", anioNacHasta:"" });
 
+  const [isMobile, setIsMobile] = useState(false);
+  const [modalEditOpen, setModalEditOpen] = useState(false);
+
   useEffect(() => { cargarDatos(); }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   async function cargarDatos() {
     const q = query(collection(db, "torneos_carnet"), orderBy("creadoEn", "desc"));
@@ -121,13 +132,20 @@ export default function Torneos() {
   }
 
   function iniciarEdicion(t) {
-    setEditando(t.id);
-    // Migration: convert old string[] format to object[] format
     const cats = (t.categorias || []).map(c =>
       typeof c === "string" ? { id:c, anioNacDesde:"", anioNacHasta:"" } : c
     );
     setFormEdit({ nombre:t.nombre, temporada:t.temporada||"", fechaInicioInscripcion:t.fechaInicioInscripcion, fechaCierreInscripcion:t.fechaCierreInscripcion, categorias:cats });
     setCatEditSelect("");
+    setPendingCatEditId(null);
+    setEditandoChipEditIdx(null);
+    setEditando(t.id);
+    if (isMobile) setModalEditOpen(true);
+  }
+
+  function cerrarModalEdit() {
+    setModalEditOpen(false);
+    setEditando(null);
     setPendingCatEditId(null);
     setEditandoChipEditIdx(null);
   }
@@ -141,6 +159,7 @@ export default function Torneos() {
       categorias: formEdit.categorias || []
     });
     setEditando(null);
+    setModalEditOpen(false);
     await cargarDatos();
   }
 
@@ -157,6 +176,71 @@ export default function Torneos() {
 
   const catDisponibles = categorias.filter(c => !categoriasSeleccionadas.some(s => s.id === c.id));
   const catDisponiblesEdit = categorias.filter(c => !(formEdit.categorias||[]).some(s => s.id === c.id));
+
+  // Shared edit form content used by both inline (desktop) and modal (mobile)
+  function EditFormCategorias() {
+    return (
+      <div>
+        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+          <select style={{ ...s.input, flex:1 }} value={catEditSelect} onChange={e => setCatEditSelect(e.target.value)}>
+            <option value="">— Agregar categoría —</option>
+            {catDisponiblesEdit.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </select>
+          <button style={s.btnSm("#1e3a4a")} onClick={agregarCategoriaEdit} disabled={!catEditSelect}>+</button>
+        </div>
+
+        {pendingCatEditId && (
+          <div style={{ display:"flex", flexDirection:"column", gap:8, background:"#fffdf5", border:"1px solid #e8d5a0", borderRadius:8, padding:"10px 12px", marginBottom:8 }}>
+            <span style={{ fontSize:13, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(pendingCatEditId)}</span>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Año nac. desde:</span>
+              <input type="number" style={{ ...s.inputSm, flex:1 }} value={pendingRangosEdit.anioNacDesde} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacDesde:e.target.value})} placeholder="2008" />
+            </div>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>hasta:</span>
+              <input type="number" style={{ ...s.inputSm, flex:1 }} value={pendingRangosEdit.anioNacHasta} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacHasta:e.target.value})} placeholder="2010" />
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button style={{ ...s.btnSm("#1a6e4a"), flex:1 }} onClick={confirmarAgregarCategoriaEdit}>Confirmar</button>
+              <button style={{ ...s.btnSm("#8a9eaa"), flex:1 }} onClick={() => setPendingCatEditId(null)}>Cancelar</button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          {(formEdit.categorias||[]).map((cat, idx) => (
+            editandoChipEditIdx === idx ? (
+              <span key={cat.id} style={{ display:"flex", flexDirection:"column", gap:6, background:"#fffdf5", border:"1px solid #c9a84c", borderRadius:8, padding:"10px 12px", width:"100%" }}>
+                <span style={{ fontSize:13, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(cat.id)}</span>
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Desde:</span>
+                  <input type="number" style={{ ...s.inputSm, flex:1 }} value={editandoChipEditRangos.anioNacDesde} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacDesde:e.target.value})} placeholder="desde" />
+                </div>
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Hasta:</span>
+                  <input type="number" style={{ ...s.inputSm, flex:1 }} value={editandoChipEditRangos.anioNacHasta} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacHasta:e.target.value})} placeholder="hasta" />
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={() => { setFormEdit(prev => ({ ...prev, categorias: prev.categorias.map((c,i) => i===idx ? {...c,...editandoChipEditRangos} : c) })); setEditandoChipEditIdx(null); }} style={{ ...s.btnSm("#1a6e4a"), flex:1 }}>✓ Guardar</button>
+                  <button onClick={() => setEditandoChipEditIdx(null)} style={{ ...s.btnSm("#8a9eaa"), flex:1 }}>× Cancelar</button>
+                </div>
+              </span>
+            ) : (
+              <span key={cat.id}
+                onClick={() => { setEditandoChipEditIdx(idx); setEditandoChipEditRangos({ anioNacDesde:cat.anioNacDesde, anioNacHasta:cat.anioNacHasta }); }}
+                style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:6, padding:"6px 12px", fontSize:13, color:"#1a6e4a", display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}>
+                {getChipLabel(cat)}
+                <button onClick={e => { e.stopPropagation(); quitarCategoriaEdit(cat.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:16, lineHeight:1 }}>×</button>
+              </span>
+            )
+          ))}
+          {(formEdit.categorias||[]).length === 0 && !pendingCatEditId && (
+            <span style={{ fontSize:12, color:"#8a9eaa" }}>Ninguna categoría agregada</span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -257,7 +341,8 @@ export default function Torneos() {
               <tr><td colSpan={5} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay torneos creados todavía.</td></tr>
             )}
             {torneos.map(t => (
-              editando === t.id ? (
+              // Inline edit row: only on desktop
+              !isMobile && editando === t.id ? (
                 <tr key={t.id} style={{ background:"#fffdf5" }}>
                   <td style={s.td}><input style={s.inputInline} value={formEdit.nombre} onChange={e => setFormEdit({...formEdit, nombre:e.target.value})} /></td>
                   <td style={s.td}><input style={s.inputInline} value={formEdit.temporada} onChange={e => setFormEdit({...formEdit, temporada:e.target.value})} /></td>
@@ -339,6 +424,51 @@ export default function Torneos() {
           </tbody>
         </table>
       </div>
+
+      {/* Modal de edición para mobile */}
+      {modalEditOpen && editando && (
+        <div
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+          onClick={e => { if (e.target === e.currentTarget) cerrarModalEdit(); }}
+        >
+          <div style={{ background:"white", borderRadius:"16px 16px 0 0", padding:"1.5rem", width:"100%", maxHeight:"90vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
+              <span style={{ fontWeight:700, fontSize:17, color:"#1e3a4a" }}>Editar torneo</span>
+              <button onClick={cerrarModalEdit} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", color:"#8a9eaa", lineHeight:1, padding:0 }}>×</button>
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={s.label}>Nombre del torneo</label>
+              <input style={s.input} value={formEdit.nombre||""} onChange={e => setFormEdit({...formEdit, nombre:e.target.value})} placeholder="Ej: Torneo Apertura 2026" />
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={s.label}>Temporada</label>
+              <input style={s.input} value={formEdit.temporada||""} onChange={e => setFormEdit({...formEdit, temporada:e.target.value})} placeholder="2026" />
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={s.label}>Inicio inscripción</label>
+              <input type="date" style={s.input} value={formEdit.fechaInicioInscripcion||""} onChange={e => setFormEdit({...formEdit, fechaInicioInscripcion:e.target.value})} />
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={s.label}>Cierre inscripción</label>
+              <input type="date" style={s.input} value={formEdit.fechaCierreInscripcion||""} onChange={e => setFormEdit({...formEdit, fechaCierreInscripcion:e.target.value})} />
+            </div>
+
+            <div style={{ marginBottom:20 }}>
+              <label style={{ ...s.label, marginBottom:8 }}>Categorías</label>
+              <EditFormCategorias />
+            </div>
+
+            <div style={{ display:"flex", gap:10 }}>
+              <button style={{ ...s.btn, flex:1, padding:"12px 18px", fontSize:14 }} onClick={() => guardarEdicion(editando)}>Guardar cambios</button>
+              <button style={{ ...s.btn, background:"#8a9eaa", flex:1, padding:"12px 18px", fontSize:14 }} onClick={cerrarModalEdit}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
