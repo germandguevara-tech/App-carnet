@@ -43,17 +43,15 @@ export default function Torneos() {
   const [editandoChipEditIdx, setEditandoChipEditIdx] = useState(null);
   const [editandoChipEditRangos, setEditandoChipEditRangos] = useState({ anioNacDesde:"", anioNacHasta:"" });
 
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [modalEditOpen, setModalEditOpen] = useState(false);
 
   useEffect(() => { cargarDatos(); }, []);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
-    setIsMobile(mq.matches);
-    const handler = (e) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const handler = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
   }, []);
 
   async function cargarDatos() {
@@ -132,6 +130,7 @@ export default function Torneos() {
   }
 
   function iniciarEdicion(t) {
+    console.log("iniciarEdicion - isMobile:", isMobile, "window.innerWidth:", window.innerWidth);
     const cats = (t.categorias || []).map(c =>
       typeof c === "string" ? { id:c, anioNacDesde:"", anioNacHasta:"" } : c
     );
@@ -325,105 +324,139 @@ export default function Torneos() {
         </div>
       )}
 
-      <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflow:"hidden" }}>
-        <table style={{ width:"100%", borderCollapse:"collapse" }}>
-          <thead style={{ background:"#f5f0e8" }}>
-            <tr>
-              <th style={s.th}>Torneo</th>
-              <th style={s.th}>Temporada</th>
-              <th style={s.th}>Inscripción</th>
-              <th style={{ ...s.th, textAlign:"center" }}>Estado</th>
-              <th style={{ ...s.th, textAlign:"center" }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {torneos.length === 0 && (
-              <tr><td colSpan={5} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay torneos creados todavía.</td></tr>
-            )}
-            {torneos.map(t => (
-              // Inline edit row: only on desktop
-              !isMobile && editando === t.id ? (
-                <tr key={t.id} style={{ background:"#fffdf5" }}>
-                  <td style={s.td}><input style={s.inputInline} value={formEdit.nombre} onChange={e => setFormEdit({...formEdit, nombre:e.target.value})} /></td>
-                  <td style={s.td}><input style={s.inputInline} value={formEdit.temporada} onChange={e => setFormEdit({...formEdit, temporada:e.target.value})} /></td>
-                  <td style={s.td}>
-                    <input type="date" style={{ ...s.inputInline, marginBottom:4 }} value={formEdit.fechaInicioInscripcion} onChange={e => setFormEdit({...formEdit, fechaInicioInscripcion:e.target.value})} />
-                    <input type="date" style={s.inputInline} value={formEdit.fechaCierreInscripcion} onChange={e => setFormEdit({...formEdit, fechaCierreInscripcion:e.target.value})} />
-                  </td>
-                  <td style={{ ...s.td, minWidth:240 }}>
-                    <div style={{ display:"flex", gap:6, marginBottom:6 }}>
-                      <select style={{ ...s.inputInline, flex:1 }} value={catEditSelect} onChange={e => setCatEditSelect(e.target.value)}>
-                        <option value="">— Agregar cat. —</option>
-                        {catDisponiblesEdit.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                      </select>
-                      <button style={s.btnSm("#1e3a4a")} onClick={agregarCategoriaEdit} disabled={!catEditSelect}>+</button>
-                    </div>
-
-                    {pendingCatEditId && (
-                      <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", background:"#fffdf5", border:"1px solid #e8d5a0", borderRadius:6, padding:"6px 8px", marginBottom:6 }}>
-                        <span style={{ fontSize:11, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(pendingCatEditId)}</span>
-                        <input type="number" style={{ ...s.inputSm, width:65 }} value={pendingRangosEdit.anioNacDesde} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacDesde:e.target.value})} placeholder="desde" />
-                        <span style={{ fontSize:11, color:"#8a9eaa" }}>–</span>
-                        <input type="number" style={{ ...s.inputSm, width:65 }} value={pendingRangosEdit.anioNacHasta} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacHasta:e.target.value})} placeholder="hasta" />
-                        <button style={s.btnSm("#1a6e4a")} onClick={confirmarAgregarCategoriaEdit}>✓</button>
-                        <button style={s.btnSm("#8a9eaa")} onClick={() => setPendingCatEditId(null)}>×</button>
+      {/* Desktop: tabla */}
+      {!isMobile && (
+        <div style={{ background:"white", borderRadius:12, border:"1px solid #ede5d5", overflow:"hidden" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <thead style={{ background:"#f5f0e8" }}>
+              <tr>
+                <th style={s.th}>Torneo</th>
+                <th style={s.th}>Temporada</th>
+                <th style={s.th}>Inscripción</th>
+                <th style={{ ...s.th, textAlign:"center" }}>Estado</th>
+                <th style={{ ...s.th, textAlign:"center" }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {torneos.length === 0 && (
+                <tr><td colSpan={5} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay torneos creados todavía.</td></tr>
+              )}
+              {torneos.map(t => (
+                editando === t.id ? (
+                  <tr key={t.id} style={{ background:"#fffdf5" }}>
+                    <td style={s.td}><input style={s.inputInline} value={formEdit.nombre} onChange={e => setFormEdit({...formEdit, nombre:e.target.value})} /></td>
+                    <td style={s.td}><input style={s.inputInline} value={formEdit.temporada} onChange={e => setFormEdit({...formEdit, temporada:e.target.value})} /></td>
+                    <td style={s.td}>
+                      <input type="date" style={{ ...s.inputInline, marginBottom:4 }} value={formEdit.fechaInicioInscripcion} onChange={e => setFormEdit({...formEdit, fechaInicioInscripcion:e.target.value})} />
+                      <input type="date" style={s.inputInline} value={formEdit.fechaCierreInscripcion} onChange={e => setFormEdit({...formEdit, fechaCierreInscripcion:e.target.value})} />
+                    </td>
+                    <td style={{ ...s.td, minWidth:240 }}>
+                      <div style={{ display:"flex", gap:6, marginBottom:6 }}>
+                        <select style={{ ...s.inputInline, flex:1 }} value={catEditSelect} onChange={e => setCatEditSelect(e.target.value)}>
+                          <option value="">— Agregar cat. —</option>
+                          {catDisponiblesEdit.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                        </select>
+                        <button style={s.btnSm("#1e3a4a")} onClick={agregarCategoriaEdit} disabled={!catEditSelect}>+</button>
                       </div>
-                    )}
 
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-                      {(formEdit.categorias||[]).map((cat, idx) => (
-                        editandoChipEditIdx === idx ? (
-                          <span key={cat.id} style={{ display:"flex", alignItems:"center", gap:3, background:"#fffdf5", border:"1px solid #c9a84c", borderRadius:4, padding:"3px 6px", flexWrap:"wrap" }}>
-                            <span style={{ fontSize:11, fontWeight:600 }}>{getNombreCategoria(cat.id)}:</span>
-                            <input type="number" style={{ ...s.inputSm, width:60 }} value={editandoChipEditRangos.anioNacDesde} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacDesde:e.target.value})} placeholder="desde" />
-                            <span style={{ fontSize:11, color:"#8a9eaa" }}>–</span>
-                            <input type="number" style={{ ...s.inputSm, width:60 }} value={editandoChipEditRangos.anioNacHasta} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacHasta:e.target.value})} placeholder="hasta" />
-                            <button onClick={() => { setFormEdit(prev => ({ ...prev, categorias: prev.categorias.map((c,i) => i===idx ? {...c,...editandoChipEditRangos} : c) })); setEditandoChipEditIdx(null); }} style={s.btnSm("#1a6e4a")}>✓</button>
-                            <button onClick={() => setEditandoChipEditIdx(null)} style={s.btnSm("#8a9eaa")}>×</button>
-                          </span>
-                        ) : (
-                          <span key={cat.id}
-                            onClick={() => { setEditandoChipEditIdx(idx); setEditandoChipEditRangos({ anioNacDesde:cat.anioNacDesde, anioNacHasta:cat.anioNacHasta }); }}
-                            style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:4, padding:"2px 8px", fontSize:11, color:"#1a6e4a", display:"flex", alignItems:"center", gap:4, cursor:"pointer" }}>
-                            {getChipLabel(cat)}
-                            <button onClick={e => { e.stopPropagation(); quitarCategoriaEdit(cat.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:12, lineHeight:1 }}>×</button>
-                          </span>
-                        )
-                      ))}
-                    </div>
-                  </td>
-                  <td style={{ ...s.td, textAlign:"center" }}>
-                    <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
-                      <button style={s.btnSm("#1a6e4a")} onClick={() => guardarEdicion(t.id)}>Guardar</button>
-                      <button style={s.btnSm("#8a9eaa")} onClick={() => { setEditando(null); setPendingCatEditId(null); setEditandoChipEditIdx(null); }}>Cancelar</button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                <tr key={t.id}>
-                  <td style={{ ...s.td, fontWeight:600 }}>{t.nombre}</td>
-                  <td style={s.td}>{t.temporada || "—"}</td>
-                  <td style={{ ...s.td, fontSize:12 }}>{t.fechaInicioInscripcion} → {t.fechaCierreInscripcion}</td>
-                  <td style={{ ...s.td, textAlign:"center" }}>
-                    <span style={{ background: ESTADO_BG[t.estado], color: ESTADO_COLORES[t.estado], borderRadius:6, padding:"3px 10px", fontSize:12, fontWeight:600 }}>
-                      {t.estado}
-                    </span>
-                  </td>
-                  <td style={{ ...s.td, textAlign:"center" }}>
-                    <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
-                      <button style={{ background:"none", border:"1.5px solid #c9a84c", borderRadius:6, padding:"4px 8px", cursor:"pointer", fontSize:14, color:"#c9a84c" }} onClick={() => iniciarEdicion(t)}>✏️</button>
-                      {t.estado === "activo" && <button style={s.btnSm("#c0392b")} onClick={() => cambiarEstado(t.id, "cerrado")}>Cerrar</button>}
-                      {t.estado === "cerrado" && <button style={s.btnSm("#1a6e4a")} onClick={() => cambiarEstado(t.id, "activo")}>Reabrir</button>}
-                      {t.estado !== "archivado" && <button style={s.btnSm("#8a9eaa")} onClick={() => cambiarEstado(t.id, "archivado")}>Archivar</button>}
-                      <button style={{ background:"none", border:"1.5px solid #c0392b", borderRadius:6, padding:"4px 8px", cursor:"pointer", fontSize:14, color:"#c0392b" }} onClick={() => eliminarTorneo(t.id)}>✕</button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            ))}
-          </tbody>
-        </table>
-      </div>
+                      {pendingCatEditId && (
+                        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", background:"#fffdf5", border:"1px solid #e8d5a0", borderRadius:6, padding:"6px 8px", marginBottom:6 }}>
+                          <span style={{ fontSize:11, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(pendingCatEditId)}</span>
+                          <input type="number" style={{ ...s.inputSm, width:65 }} value={pendingRangosEdit.anioNacDesde} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacDesde:e.target.value})} placeholder="desde" />
+                          <span style={{ fontSize:11, color:"#8a9eaa" }}>–</span>
+                          <input type="number" style={{ ...s.inputSm, width:65 }} value={pendingRangosEdit.anioNacHasta} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacHasta:e.target.value})} placeholder="hasta" />
+                          <button style={s.btnSm("#1a6e4a")} onClick={confirmarAgregarCategoriaEdit}>✓</button>
+                          <button style={s.btnSm("#8a9eaa")} onClick={() => setPendingCatEditId(null)}>×</button>
+                        </div>
+                      )}
+
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                        {(formEdit.categorias||[]).map((cat, idx) => (
+                          editandoChipEditIdx === idx ? (
+                            <span key={cat.id} style={{ display:"flex", alignItems:"center", gap:3, background:"#fffdf5", border:"1px solid #c9a84c", borderRadius:4, padding:"3px 6px", flexWrap:"wrap" }}>
+                              <span style={{ fontSize:11, fontWeight:600 }}>{getNombreCategoria(cat.id)}:</span>
+                              <input type="number" style={{ ...s.inputSm, width:60 }} value={editandoChipEditRangos.anioNacDesde} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacDesde:e.target.value})} placeholder="desde" />
+                              <span style={{ fontSize:11, color:"#8a9eaa" }}>–</span>
+                              <input type="number" style={{ ...s.inputSm, width:60 }} value={editandoChipEditRangos.anioNacHasta} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacHasta:e.target.value})} placeholder="hasta" />
+                              <button onClick={() => { setFormEdit(prev => ({ ...prev, categorias: prev.categorias.map((c,i) => i===idx ? {...c,...editandoChipEditRangos} : c) })); setEditandoChipEditIdx(null); }} style={s.btnSm("#1a6e4a")}>✓</button>
+                              <button onClick={() => setEditandoChipEditIdx(null)} style={s.btnSm("#8a9eaa")}>×</button>
+                            </span>
+                          ) : (
+                            <span key={cat.id}
+                              onClick={() => { setEditandoChipEditIdx(idx); setEditandoChipEditRangos({ anioNacDesde:cat.anioNacDesde, anioNacHasta:cat.anioNacHasta }); }}
+                              style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:4, padding:"2px 8px", fontSize:11, color:"#1a6e4a", display:"flex", alignItems:"center", gap:4, cursor:"pointer" }}>
+                              {getChipLabel(cat)}
+                              <button onClick={e => { e.stopPropagation(); quitarCategoriaEdit(cat.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:12, lineHeight:1 }}>×</button>
+                            </span>
+                          )
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{ ...s.td, textAlign:"center" }}>
+                      <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
+                        <button style={s.btnSm("#1a6e4a")} onClick={() => guardarEdicion(t.id)}>Guardar</button>
+                        <button style={s.btnSm("#8a9eaa")} onClick={() => { setEditando(null); setPendingCatEditId(null); setEditandoChipEditIdx(null); }}>Cancelar</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={t.id}>
+                    <td style={{ ...s.td, fontWeight:600 }}>{t.nombre}</td>
+                    <td style={s.td}>{t.temporada || "—"}</td>
+                    <td style={{ ...s.td, fontSize:12 }}>{t.fechaInicioInscripcion} → {t.fechaCierreInscripcion}</td>
+                    <td style={{ ...s.td, textAlign:"center" }}>
+                      <span style={{ background: ESTADO_BG[t.estado], color: ESTADO_COLORES[t.estado], borderRadius:6, padding:"3px 10px", fontSize:12, fontWeight:600 }}>
+                        {t.estado}
+                      </span>
+                    </td>
+                    <td style={{ ...s.td, textAlign:"center" }}>
+                      <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
+                        <button style={{ background:"none", border:"1.5px solid #c9a84c", borderRadius:6, padding:"4px 8px", cursor:"pointer", fontSize:14, color:"#c9a84c" }} onClick={() => iniciarEdicion(t)}>✏️</button>
+                        {t.estado === "activo" && <button style={s.btnSm("#c0392b")} onClick={() => cambiarEstado(t.id, "cerrado")}>Cerrar</button>}
+                        {t.estado === "cerrado" && <button style={s.btnSm("#1a6e4a")} onClick={() => cambiarEstado(t.id, "activo")}>Reabrir</button>}
+                        {t.estado !== "archivado" && <button style={s.btnSm("#8a9eaa")} onClick={() => cambiarEstado(t.id, "archivado")}>Archivar</button>}
+                        <button style={{ background:"none", border:"1.5px solid #c0392b", borderRadius:6, padding:"4px 8px", cursor:"pointer", fontSize:14, color:"#c0392b" }} onClick={() => eliminarTorneo(t.id)}>✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Mobile: cards */}
+      {isMobile && (
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          {torneos.length === 0 && (
+            <div style={{ ...s.card, textAlign:"center", color:"#8a9eaa" }}>No hay torneos creados todavía.</div>
+          )}
+          {torneos.map(t => (
+            <div key={t.id} style={s.card}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+                <div style={{ fontWeight:700, fontSize:15, color:"#1e3a4a", flex:1, marginRight:8 }}>{t.nombre}</div>
+                <span style={{ background: ESTADO_BG[t.estado], color: ESTADO_COLORES[t.estado], borderRadius:6, padding:"3px 10px", fontSize:12, fontWeight:600, whiteSpace:"nowrap" }}>
+                  {t.estado}
+                </span>
+              </div>
+              {t.temporada && (
+                <div style={{ fontSize:13, color:"#4a6070", marginBottom:4 }}>Temporada: <strong>{t.temporada}</strong></div>
+              )}
+              <div style={{ fontSize:12, color:"#8a9eaa", marginBottom:14 }}>
+                {t.fechaInicioInscripcion} → {t.fechaCierreInscripcion}
+              </div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                <button style={{ ...s.btn, fontSize:13, padding:"8px 16px" }} onClick={() => iniciarEdicion(t)}>✏️ Editar</button>
+                {t.estado === "activo" && <button style={{ ...s.btnSm("#c0392b"), padding:"8px 14px", fontSize:12 }} onClick={() => cambiarEstado(t.id, "cerrado")}>Cerrar</button>}
+                {t.estado === "cerrado" && <button style={{ ...s.btnSm("#1a6e4a"), padding:"8px 14px", fontSize:12 }} onClick={() => cambiarEstado(t.id, "activo")}>Reabrir</button>}
+                {t.estado !== "archivado" && <button style={{ ...s.btnSm("#8a9eaa"), padding:"8px 14px", fontSize:12 }} onClick={() => cambiarEstado(t.id, "archivado")}>Archivar</button>}
+                <button style={{ background:"none", border:"1.5px solid #c0392b", borderRadius:6, padding:"8px 12px", cursor:"pointer", fontSize:14, color:"#c0392b" }} onClick={() => eliminarTorneo(t.id)}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Modal de edición para mobile */}
       {modalEditOpen && editando && (
