@@ -57,6 +57,15 @@ export default function Categorias() {
   }
 
   async function eliminarCategoria(id) {
+    const snapTorneos = await getDocs(collection(db, "torneos_carnet"));
+    const torneoConCategoria = snapTorneos.docs.find(d => {
+      const cats = d.data().categorias || [];
+      return cats.some(c => (typeof c === "string" ? c === id : c.id === id));
+    });
+    if (torneoConCategoria) {
+      alert(`No podés eliminar esta categoría porque está asignada al torneo "${torneoConCategoria.data().nombre}". Primero quitala del torneo.`);
+      return;
+    }
     if (!confirm("¿Eliminar esta categoría?")) return;
     await deleteDoc(doc(db, "categorias_carnet", id));
     await cargarCategorias();

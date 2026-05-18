@@ -104,7 +104,13 @@ export default function Torneos() {
     setPendingCatEditId(null);
   }
 
-  function quitarCategoriaEdit(id) {
+  async function quitarCategoriaEdit(id) {
+    const snap = await getDocs(query(collection(db, "jugadores_carnet"), where("torneoId", "==", editando), where("categoriaId", "==", id)));
+    const activos = snap.docs.filter(d => d.data().estado !== "inactivo");
+    if (activos.length > 0) {
+      alert(`No podés quitar esta categoría porque hay ${activos.length} jugador${activos.length === 1 ? "" : "es"} inscripto${activos.length === 1 ? "" : "s"} en ella para este torneo.`);
+      return;
+    }
     setFormEdit(prev => ({ ...prev, categorias: (prev.categorias||[]).filter(c => c.id !== id) }));
   }
 
