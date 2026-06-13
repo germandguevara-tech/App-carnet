@@ -182,6 +182,8 @@ export default function Visualizadores() {
     if (!form.email || !form.password || !form.torneoId) { setError("Completá email, contraseña y torneo"); return; }
     setLoading(true); setError("");
     try {
+      const existe = await getDocs(query(collection(db, "Usuarios"), where("email", "==", form.email)));
+      if (!existe.empty) { setError("El nombre de usuario ya está en uso. Elegí otro."); setLoading(false); return; }
       const cred = await createUserWithEmailAndPassword(authSecondary, form.email, form.password);
       await addDoc(collection(db, "Usuarios"), {
         email: form.email,

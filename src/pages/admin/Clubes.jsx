@@ -110,6 +110,8 @@ function ModalUsuarios({ club, onClose, torneos }) {
     if (!form.usuario || !form.password) { setError("Completá usuario y contraseña"); return; }
     setLoading(true); setError("");
     try {
+      const existe = await getDocs(query(collection(db, "Usuarios"), where("usuario", "==", form.usuario)));
+      if (!existe.empty) { setError("El nombre de usuario ya está en uso. Elegí otro."); setLoading(false); return; }
       const email = generarEmail(form.usuario);
       const cred = await createUserWithEmailAndPassword(auth, email, form.password);
       await addDoc(collection(db, "Usuarios"), {
@@ -297,6 +299,8 @@ export default function Clubes() {
     if (!form.nombre || !form.usuario || !form.password || !form.torneoId) { setError("Completá todos los campos"); return; }
     setLoading(true); setError("");
     try {
+      const existe = await getDocs(query(collection(db, "Usuarios"), where("usuario", "==", form.usuario)));
+      if (!existe.empty) { setError("El nombre de usuario ya está en uso. Elegí otro."); setLoading(false); return; }
       const email = generarEmail(form.usuario);
       const cred = await createUserWithEmailAndPassword(auth, email, form.password);
       let logoUrl = "";
