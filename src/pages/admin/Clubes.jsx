@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { db, auth } from "../../firebase";
+import { db, auth, functions } from "../../firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, orderBy, query, where } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 import { subirFotoADrive, urlVisualizacion } from "../../utils/drive";
 
 const s = {
@@ -25,6 +26,13 @@ function generarNombreLogo(nombre) {
     .trim() + ".jpg";
 }
 
+function generarEmail(usuario) {
+  return usuario.trim().toLowerCase()
+    .replace(/\s+/g, "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "") + "@app-carnet.com";
+}
+
 function Switch({ value, onChange }) {
   return (
     <div onClick={onChange} style={{ width:44, height:24, borderRadius:12, background: value ? "#1a6e4a" : "#ced4da", cursor:"pointer", position:"relative", transition:"background 0.2s", flexShrink:0 }}>
@@ -33,11 +41,63 @@ function Switch({ value, onChange }) {
   );
 }
 
-function ModalUsuarios({ club, onClose, torneos }) {
-  const [usuarios, setUsuarios] = useState([]);
-  const [form, setForm] = useState({ email:"", password:"" });
+function ModalCambiarPassword({ usuario, onClose }) {
+  const [pass1, setPass1] = useState("");
+  const [pass2, setPass2] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ok, setOk] = useState(false);
+
+  async function guardar() {
+    if (pass1.length < 6) { setError("Mínimo 6 caracteres"); return; }
+    if (pass1 !== pass2) { setError("Las contraseñas no coinciden"); return; }
+    setLoading(true); setError("");
+    try {
+      const fn = httpsCallable(functions, "cambiarPasswordUsuario");
+      await fn({ uid: usuario.uid, nuevaPassword: pass1 });
+      setOk(true);
+    } catch(err) { setError("Error: " + (err.message || "No se pudo cambiar")); }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1100 }}>
+      <div style={{ background:"white", borderRadius:16, padding:"2rem", width:"100%", maxWidth:380 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
+          <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>🔑 Cambiar contraseña</div>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
+        </div>
+        <div style={{ fontSize:13, color:"#4a6070", marginBottom:"1rem" }}>{usuario.usuario || usuario.email}</div>
+        {ok ? (
+          <div style={{ color:"#1a6e4a", fontSize:13, fontWeight:600 }}>✅ Contraseña actualizada correctamente.</div>
+        ) : (
+          <>
+            <div style={{ marginBottom:12 }}>
+              <label style={s.label}>Nueva contraseña</label>
+              <input type="password" style={s.input} value={pass1} onChange={e => setPass1(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div style={{ marginBottom:12 }}>
+              <label style={s.label}>Confirmar contraseña</label>
+              <input type="password" style={s.input} value={pass2} onChange={e => setPass2(e.target.value)} placeholder="Repetir contraseña" />
+            </div>
+            {error && <div style={{ color:"#c0392b", fontSize:12, marginBottom:8 }}>{error}</div>}
+            <div style={{ display:"flex", gap:8 }}>
+              <button style={s.btn} onClick={guardar} disabled={loading}>{loading ? "Guardando..." : "Guardar"}</button>
+              <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={onClose}>Cancelar</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ModalUsuarios({ club, onClose, torneos }) {
+  const [usuarios, setUsuarios] = useState([]);
+  const [form, setForm] = useState({ usuario:"", password:"" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [modalCambiarPass, setModalCambiarPass] = useState(null);
 
   useEffect(() => { cargarUsuarios(); }, []);
 
@@ -47,19 +107,21 @@ function ModalUsuarios({ club, onClose, torneos }) {
   }
 
   async function agregarUsuario() {
-    if (!form.email || !form.password) { setError("Completá email y contraseña"); return; }
+    if (!form.usuario || !form.password) { setError("Completá usuario y contraseña"); return; }
     setLoading(true); setError("");
     try {
-      const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      const email = generarEmail(form.usuario);
+      const cred = await createUserWithEmailAndPassword(auth, email, form.password);
       await addDoc(collection(db, "Usuarios"), {
-        email: form.email,
+        usuario: form.usuario,
+        email,
         Rol: "club", rol: "club",
         Nombre: club.nombre,
         uid: cred.user.uid,
         clubId: club.uid,
         activo: true
       });
-      setForm({ email:"", password:"" });
+      setForm({ usuario:"", password:"" });
       await cargarUsuarios();
     } catch(err) { setError("Error: " + err.message); }
     setLoading(false);
@@ -82,8 +144,8 @@ function ModalUsuarios({ club, onClose, torneos }) {
           <div style={{ fontSize:12, color:"#4a6070", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:10 }}>Agregar usuario</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
             <div>
-              <label style={s.label}>Email</label>
-              <input style={s.input} type="email" value={form.email} onChange={e => setForm({...form, email:e.target.value})} placeholder="usuario@email.com" />
+              <label style={s.label}>Usuario</label>
+              <input style={s.input} type="text" value={form.usuario} onChange={e => setForm({...form, usuario:e.target.value})} placeholder="ej: independiente2026" />
             </div>
             <div>
               <label style={s.label}>Contraseña</label>
@@ -99,15 +161,24 @@ function ModalUsuarios({ club, onClose, torneos }) {
         {usuarios.map(u => (
           <div key={u.docId} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid #f5f0e8" }}>
             <div>
-              <div style={{ fontSize:13, fontWeight:500, color:"#1e3a4a" }}>{u.email}</div>
+              <div style={{ fontSize:13, fontWeight:500, color:"#1e3a4a" }}>{u.usuario || u.email}</div>
               <div style={{ fontSize:11, color: u.activo !== false ? "#1a6e4a" : "#c0392b" }}>
                 {u.activo !== false ? "Activo" : "Desactivado"}
               </div>
             </div>
-            <Switch value={u.activo !== false} onChange={() => toggleActivo(u.docId, u.activo !== false)} />
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <button style={s.btnSm("#4a6070")} onClick={() => setModalCambiarPass(u)}>🔑 Contraseña</button>
+              <Switch value={u.activo !== false} onChange={() => toggleActivo(u.docId, u.activo !== false)} />
+            </div>
           </div>
         ))}
       </div>
+      {modalCambiarPass && (
+        <ModalCambiarPassword
+          usuario={modalCambiarPass}
+          onClose={() => setModalCambiarPass(null)}
+        />
+      )}
     </div>
   );
 }
@@ -195,7 +266,7 @@ export default function Clubes() {
   const [clubes, setClubes] = useState([]);
   const [torneos, setTorneos] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [form, setForm] = useState({ nombre:"", email:"", password:"", torneoId:"" });
+  const [form, setForm] = useState({ nombre:"", usuario:"", password:"", torneoId:"" });
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -223,10 +294,11 @@ export default function Clubes() {
   }
 
   async function crearClub() {
-    if (!form.nombre || !form.email || !form.password || !form.torneoId) { setError("Completá todos los campos"); return; }
+    if (!form.nombre || !form.usuario || !form.password || !form.torneoId) { setError("Completá todos los campos"); return; }
     setLoading(true); setError("");
     try {
-      const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      const email = generarEmail(form.usuario);
+      const cred = await createUserWithEmailAndPassword(auth, email, form.password);
       let logoUrl = "";
       if (logoFile) {
         const { url } = await subirFotoADrive({
@@ -237,10 +309,10 @@ export default function Clubes() {
         });
         logoUrl = url;
       }
-      await addDoc(collection(db, "Usuarios"), { email:form.email, Rol:"club", rol:"club", Nombre:form.nombre, uid:cred.user.uid, clubId:cred.user.uid, activo:true });
-      await addDoc(collection(db, "clubes_carnet"), { nombre:form.nombre, email:form.email, torneoId:form.torneoId, uid:cred.user.uid, permitirGaleria:false, creadoEn:new Date(), logoUrl });
+      await addDoc(collection(db, "Usuarios"), { usuario:form.usuario, email, Rol:"club", rol:"club", Nombre:form.nombre, uid:cred.user.uid, clubId:cred.user.uid, activo:true });
+      await addDoc(collection(db, "clubes_carnet"), { nombre:form.nombre, usuario:form.usuario, email, torneoId:form.torneoId, uid:cred.user.uid, permitirGaleria:false, creadoEn:new Date(), logoUrl });
       if (logoPreview) URL.revokeObjectURL(logoPreview);
-      setForm({ nombre:"", email:"", password:"", torneoId:"" });
+      setForm({ nombre:"", usuario:"", password:"", torneoId:"" });
       setLogoFile(null);
       setLogoPreview(null);
       setMostrarForm(false);
@@ -259,7 +331,8 @@ export default function Clubes() {
   }
 
   function enviarWhatsapp(club) {
-    const msg = encodeURIComponent(`Hola *${club.nombre}*! 👋\n\nTe enviamos tus credenciales para *App-Carnet*:\n\n📧 Usuario: ${club.email}\n🔑 Contraseña: (la que te informamos)\n\n🔗 Ingresá en: ${window.location.origin}\n\n¡Cualquier consulta avisanos!`);
+    const credencial = club.usuario || club.email;
+    const msg = encodeURIComponent(`Hola *${club.nombre}*! 👋\n\nTe enviamos tus credenciales para *App-Carnet*:\n\n👤 Usuario: ${credencial}\n🔑 Contraseña: (la que te informamos)\n\n🔗 Ingresá en: ${window.location.origin}\n\n¡Cualquier consulta avisanos!`);
     window.open(`https://wa.me/?text=${msg}`, "_blank");
   }
 
@@ -284,8 +357,8 @@ export default function Clubes() {
               <input style={s.input} value={form.nombre} onChange={e => setForm({...form, nombre:e.target.value})} placeholder="Club Atlético Norte" />
             </div>
             <div>
-              <label style={s.label}>Email usuario principal</label>
-              <input type="email" style={s.input} value={form.email} onChange={e => setForm({...form, email:e.target.value})} placeholder="club@email.com" />
+              <label style={s.label}>Usuario principal</label>
+              <input type="text" style={s.input} value={form.usuario} onChange={e => setForm({...form, usuario:e.target.value})} placeholder="ej: atleticonorte2026" />
             </div>
             <div>
               <label style={s.label}>Contraseña</label>

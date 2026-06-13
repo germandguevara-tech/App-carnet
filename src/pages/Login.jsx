@@ -5,7 +5,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [usuario, setUsuario] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,25 +15,39 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    let cred = null;
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      console.log("UID:", cred.user.uid);
+      cred = await signInWithEmailAndPassword(auth, usuario, password);
+    } catch {
+      try {
+        const emailGenerado = usuario.trim().toLowerCase()
+          .replace(/\s+/g, "")
+          .normalize("NFD").replace(/[̀-ͯ]/g, "")
+          .replace(/[^a-z0-9]/g, "") + "@app-carnet.com";
+        cred = await signInWithEmailAndPassword(auth, emailGenerado, password);
+      } catch {
+        setError("Usuario o contraseña incorrectos");
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
       const q = query(collection(db, "Usuarios"), where("uid", "==", cred.user.uid));
       const snapU = await getDocs(q);
-      console.log("Encontrado:", !snapU.empty);
       if (!snapU.empty) {
         const data = snapU.docs[0].data();
         const rol = (data.Rol || data.rol || "").toLowerCase();
-        console.log("Rol:", rol);
         if (rol === "admin") navigate("/admin");
         else if (rol === "club") navigate("/club");
         else if (rol === "arbitro") navigate("/arbitro");
+        else if (rol === "visualizador") navigate("/visualizador");
       } else {
         setError("Usuario no encontrado en el sistema");
       }
     } catch (err) {
-      console.log("Error:", err.message);
-      setError("Usuario o contraseña incorrectos");
+      setError("Error al obtener datos del usuario");
     }
     setLoading(false);
   }
@@ -48,8 +62,8 @@ export default function Login() {
         </div>
         <form onSubmit={handleLogin} style={{ padding:"2rem" }}>
           <div style={{ marginBottom:16 }}>
-            <label style={{ fontSize:12, color:"#4a6070", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", display:"block", marginBottom:6 }}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:15, outline:"none", boxSizing:"border-box" }} required />
+            <label style={{ fontSize:12, color:"#4a6070", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", display:"block", marginBottom:6 }}>Usuario</label>
+            <input type="text" value={usuario} onChange={e => setUsuario(e.target.value)} style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #ede5d5", borderRadius:10, fontSize:15, outline:"none", boxSizing:"border-box" }} required />
           </div>
           <div style={{ marginBottom:16 }}>
             <label style={{ fontSize:12, color:"#4a6070", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", display:"block", marginBottom:6 }}>Contraseña</label>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { db, authSecondary } from "../../firebase";
+import { db, authSecondary, functions } from "../../firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 
 const ESTADOS_OPCIONES = [
   { id:"pendiente", label:"Pendiente" },
@@ -35,6 +36,57 @@ function CheckboxEstados({ valor, onChange }) {
           {e.label}
         </label>
       ))}
+    </div>
+  );
+}
+
+function ModalCambiarPassword({ usuario, onClose }) {
+  const [pass1, setPass1] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [ok, setOk] = useState(false);
+
+  async function guardar() {
+    if (pass1.length < 6) { setError("Mínimo 6 caracteres"); return; }
+    if (pass1 !== pass2) { setError("Las contraseñas no coinciden"); return; }
+    setLoading(true); setError("");
+    try {
+      const fn = httpsCallable(functions, "cambiarPasswordUsuario");
+      await fn({ uid: usuario.uid, nuevaPassword: pass1 });
+      setOk(true);
+    } catch(err) { setError("Error: " + (err.message || "No se pudo cambiar")); }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1100 }}>
+      <div style={{ background:"white", borderRadius:16, padding:"2rem", width:"100%", maxWidth:380 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
+          <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>🔑 Cambiar contraseña</div>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"cursor", color:"#8a9eaa" }}>×</button>
+        </div>
+        <div style={{ fontSize:13, color:"#4a6070", marginBottom:"1rem" }}>{usuario.usuario || usuario.email}</div>
+        {ok ? (
+          <div style={{ color:"#1a6e4a", fontSize:13, fontWeight:600 }}>✅ Contraseña actualizada correctamente.</div>
+        ) : (
+          <>
+            <div style={{ marginBottom:12 }}>
+              <label style={s.label}>Nueva contraseña</label>
+              <input type="password" style={s.input} value={pass1} onChange={e => setPass1(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div style={{ marginBottom:12 }}>
+              <label style={s.label}>Confirmar contraseña</label>
+              <input type="password" style={s.input} value={pass2} onChange={e => setPass2(e.target.value)} placeholder="Repetir contraseña" />
+            </div>
+            {error && <div style={{ color:"#c0392b", fontSize:12, marginBottom:8 }}>{error}</div>}
+            <div style={{ display:"flex", gap:8 }}>
+              <button style={s.btn} onClick={guardar} disabled={loading}>{loading ? "Guardando..." : "Guardar"}</button>
+              <button style={{ ...s.btn, background:"#8a9eaa" }} onClick={onClose}>Cancelar</button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -106,6 +158,7 @@ export default function Visualizadores() {
   const [error, setError] = useState("");
   const [modalEditar, setModalEditar] = useState(null);
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(null);
+  const [modalCambiarPass, setModalCambiarPass] = useState(null);
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -242,6 +295,7 @@ export default function Visualizadores() {
                   ) : (
                     <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
                       <button style={s.btnSm("#1e3a4a")} onClick={() => setModalEditar(v)}>✏️ Editar</button>
+                      <button style={s.btnSm("#4a6070")} onClick={() => setModalCambiarPass(v)}>🔑</button>
                       <button style={s.btnSm("#c0392b")} onClick={() => setConfirmandoEliminar(v.docId)}>🗑️</button>
                     </div>
                   )}
@@ -257,6 +311,13 @@ export default function Visualizadores() {
           viz={modalEditar}
           torneos={torneos}
           onClose={() => { setModalEditar(null); cargarDatos(); }}
+        />
+      )}
+
+      {modalCambiarPass && (
+        <ModalCambiarPassword
+          usuario={modalCambiarPass}
+          onClose={() => setModalCambiarPass(null)}
         />
       )}
     </div>
