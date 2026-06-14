@@ -301,6 +301,11 @@ export default function Clubes() {
     try {
       const existe = await getDocs(query(collection(db, "Usuarios"), where("usuario", "==", form.usuario)));
       if (!existe.empty) { setError("El nombre de usuario ya está en uso. Elegí otro."); setLoading(false); return; }
+      const clubesSnap = await getDocs(query(collection(db, "clubes_carnet"), where("torneoId", "==", form.torneoId)));
+      const nombreNorm = form.nombre.trim().toLowerCase();
+      if (clubesSnap.docs.some(d => d.data().nombre?.trim().toLowerCase() === nombreNorm)) {
+        setError("Ya existe un club con ese nombre en este torneo."); setLoading(false); return;
+      }
       const email = generarEmail(form.usuario);
       const cred = await createUserWithEmailAndPassword(auth, email, form.password);
       let logoUrl = "";
