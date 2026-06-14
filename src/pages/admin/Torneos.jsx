@@ -18,6 +18,76 @@ const s = {
 const ESTADO_COLORES = { activo:"#1a6e4a", cerrado:"#c0392b", archivado:"#8a9eaa" };
 const ESTADO_BG = { activo:"#e8f5ee", cerrado:"#fdecea", archivado:"#f5f0e8" };
 
+function EditFormCategorias({
+  catDisponiblesEdit, catEditSelect, setCatEditSelect, agregarCategoriaEdit,
+  pendingCatEditId, setPendingCatEditId, pendingRangosEdit, setPendingRangosEdit,
+  confirmarAgregarCategoriaEdit, categorias, editandoChipEditIdx, setEditandoChipEditIdx,
+  editandoChipEditRangos, setEditandoChipEditRangos, setFormEdit, quitarCategoriaEdit,
+  getNombreCategoria, getChipLabel,
+}) {
+  return (
+    <div>
+      <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+        <select style={{ ...s.input, flex:1 }} value={catEditSelect} onChange={e => setCatEditSelect(e.target.value)}>
+          <option value="">— Agregar categoría —</option>
+          {catDisponiblesEdit.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
+        <button style={s.btnSm("#1e3a4a")} onClick={agregarCategoriaEdit} disabled={!catEditSelect}>+</button>
+      </div>
+
+      {pendingCatEditId && (
+        <div style={{ display:"flex", flexDirection:"column", gap:8, background:"#fffdf5", border:"1px solid #e8d5a0", borderRadius:8, padding:"10px 12px", marginBottom:8 }}>
+          <span style={{ fontSize:13, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(pendingCatEditId)}</span>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Año nac. desde:</span>
+            <input type="number" style={{ ...s.inputSm, flex:1 }} value={pendingRangosEdit.anioNacDesde} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacDesde:e.target.value})} placeholder="2008" />
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>hasta:</span>
+            <input type="number" style={{ ...s.inputSm, flex:1 }} value={pendingRangosEdit.anioNacHasta} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacHasta:e.target.value})} placeholder="2010" />
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button style={{ ...s.btnSm("#1a6e4a"), flex:1 }} onClick={confirmarAgregarCategoriaEdit}>Confirmar</button>
+            <button style={{ ...s.btnSm("#8a9eaa"), flex:1 }} onClick={() => setPendingCatEditId(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+        {(categorias||[]).map((cat, idx) => (
+          editandoChipEditIdx === idx ? (
+            <span key={cat.id} style={{ display:"flex", flexDirection:"column", gap:6, background:"#fffdf5", border:"1px solid #c9a84c", borderRadius:8, padding:"10px 12px", width:"100%" }}>
+              <span style={{ fontSize:13, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(cat.id)}</span>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Desde:</span>
+                <input type="number" style={{ ...s.inputSm, flex:1 }} value={editandoChipEditRangos.anioNacDesde} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacDesde:e.target.value})} placeholder="desde" />
+              </div>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Hasta:</span>
+                <input type="number" style={{ ...s.inputSm, flex:1 }} value={editandoChipEditRangos.anioNacHasta} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacHasta:e.target.value})} placeholder="hasta" />
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={() => { setFormEdit(prev => ({ ...prev, categorias: prev.categorias.map((c,i) => i===idx ? {...c,...editandoChipEditRangos} : c) })); setEditandoChipEditIdx(null); }} style={{ ...s.btnSm("#1a6e4a"), flex:1 }}>✓ Guardar</button>
+                <button onClick={() => setEditandoChipEditIdx(null)} style={{ ...s.btnSm("#8a9eaa"), flex:1 }}>× Cancelar</button>
+              </div>
+            </span>
+          ) : (
+            <span key={cat.id}
+              onClick={() => { setEditandoChipEditIdx(idx); setEditandoChipEditRangos({ anioNacDesde:cat.anioNacDesde, anioNacHasta:cat.anioNacHasta }); }}
+              style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:6, padding:"6px 12px", fontSize:13, color:"#1a6e4a", display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}>
+              {getChipLabel(cat)}
+              <button onClick={e => { e.stopPropagation(); quitarCategoriaEdit(cat.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:16, lineHeight:1 }}>×</button>
+            </span>
+          )
+        ))}
+        {(categorias||[]).length === 0 && !pendingCatEditId && (
+          <span style={{ fontSize:12, color:"#8a9eaa" }}>Ninguna categoría agregada</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Torneos() {
   const [torneos, setTorneos] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -181,71 +251,6 @@ export default function Torneos() {
 
   const catDisponibles = categorias.filter(c => !categoriasSeleccionadas.some(s => s.id === c.id));
   const catDisponiblesEdit = categorias.filter(c => !(formEdit.categorias||[]).some(s => s.id === c.id));
-
-  // Shared edit form content used by both inline (desktop) and modal (mobile)
-  function EditFormCategorias() {
-    return (
-      <div>
-        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-          <select style={{ ...s.input, flex:1 }} value={catEditSelect} onChange={e => setCatEditSelect(e.target.value)}>
-            <option value="">— Agregar categoría —</option>
-            {catDisponiblesEdit.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          </select>
-          <button style={s.btnSm("#1e3a4a")} onClick={agregarCategoriaEdit} disabled={!catEditSelect}>+</button>
-        </div>
-
-        {pendingCatEditId && (
-          <div style={{ display:"flex", flexDirection:"column", gap:8, background:"#fffdf5", border:"1px solid #e8d5a0", borderRadius:8, padding:"10px 12px", marginBottom:8 }}>
-            <span style={{ fontSize:13, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(pendingCatEditId)}</span>
-            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-              <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Año nac. desde:</span>
-              <input type="number" style={{ ...s.inputSm, flex:1 }} value={pendingRangosEdit.anioNacDesde} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacDesde:e.target.value})} placeholder="2008" />
-            </div>
-            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-              <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>hasta:</span>
-              <input type="number" style={{ ...s.inputSm, flex:1 }} value={pendingRangosEdit.anioNacHasta} onChange={e => setPendingRangosEdit({...pendingRangosEdit, anioNacHasta:e.target.value})} placeholder="2010" />
-            </div>
-            <div style={{ display:"flex", gap:8 }}>
-              <button style={{ ...s.btnSm("#1a6e4a"), flex:1 }} onClick={confirmarAgregarCategoriaEdit}>Confirmar</button>
-              <button style={{ ...s.btnSm("#8a9eaa"), flex:1 }} onClick={() => setPendingCatEditId(null)}>Cancelar</button>
-            </div>
-          </div>
-        )}
-
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {(formEdit.categorias||[]).map((cat, idx) => (
-            editandoChipEditIdx === idx ? (
-              <span key={cat.id} style={{ display:"flex", flexDirection:"column", gap:6, background:"#fffdf5", border:"1px solid #c9a84c", borderRadius:8, padding:"10px 12px", width:"100%" }}>
-                <span style={{ fontSize:13, fontWeight:600, color:"#1e3a4a" }}>{getNombreCategoria(cat.id)}</span>
-                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                  <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Desde:</span>
-                  <input type="number" style={{ ...s.inputSm, flex:1 }} value={editandoChipEditRangos.anioNacDesde} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacDesde:e.target.value})} placeholder="desde" />
-                </div>
-                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                  <span style={{ fontSize:12, color:"#8a9eaa", whiteSpace:"nowrap" }}>Hasta:</span>
-                  <input type="number" style={{ ...s.inputSm, flex:1 }} value={editandoChipEditRangos.anioNacHasta} onChange={e => setEditandoChipEditRangos({...editandoChipEditRangos, anioNacHasta:e.target.value})} placeholder="hasta" />
-                </div>
-                <div style={{ display:"flex", gap:8 }}>
-                  <button onClick={() => { setFormEdit(prev => ({ ...prev, categorias: prev.categorias.map((c,i) => i===idx ? {...c,...editandoChipEditRangos} : c) })); setEditandoChipEditIdx(null); }} style={{ ...s.btnSm("#1a6e4a"), flex:1 }}>✓ Guardar</button>
-                  <button onClick={() => setEditandoChipEditIdx(null)} style={{ ...s.btnSm("#8a9eaa"), flex:1 }}>× Cancelar</button>
-                </div>
-              </span>
-            ) : (
-              <span key={cat.id}
-                onClick={() => { setEditandoChipEditIdx(idx); setEditandoChipEditRangos({ anioNacDesde:cat.anioNacDesde, anioNacHasta:cat.anioNacHasta }); }}
-                style={{ background:"#e8f5ee", border:"1px solid #1a6e4a", borderRadius:6, padding:"6px 12px", fontSize:13, color:"#1a6e4a", display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}>
-                {getChipLabel(cat)}
-                <button onClick={e => { e.stopPropagation(); quitarCategoriaEdit(cat.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#c0392b", fontWeight:700, fontSize:16, lineHeight:1 }}>×</button>
-              </span>
-            )
-          ))}
-          {(formEdit.categorias||[]).length === 0 && !pendingCatEditId && (
-            <span style={{ fontSize:12, color:"#8a9eaa" }}>Ninguna categoría agregada</span>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -498,7 +503,26 @@ export default function Torneos() {
 
             <div style={{ marginBottom:20 }}>
               <label style={{ ...s.label, marginBottom:8 }}>Categorías</label>
-              <EditFormCategorias />
+              <EditFormCategorias
+                catDisponiblesEdit={catDisponiblesEdit}
+                catEditSelect={catEditSelect}
+                setCatEditSelect={setCatEditSelect}
+                agregarCategoriaEdit={agregarCategoriaEdit}
+                pendingCatEditId={pendingCatEditId}
+                setPendingCatEditId={setPendingCatEditId}
+                pendingRangosEdit={pendingRangosEdit}
+                setPendingRangosEdit={setPendingRangosEdit}
+                confirmarAgregarCategoriaEdit={confirmarAgregarCategoriaEdit}
+                categorias={formEdit.categorias}
+                editandoChipEditIdx={editandoChipEditIdx}
+                setEditandoChipEditIdx={setEditandoChipEditIdx}
+                editandoChipEditRangos={editandoChipEditRangos}
+                setEditandoChipEditRangos={setEditandoChipEditRangos}
+                setFormEdit={setFormEdit}
+                quitarCategoriaEdit={quitarCategoriaEdit}
+                getNombreCategoria={getNombreCategoria}
+                getChipLabel={getChipLabel}
+              />
             </div>
 
             <div style={{ display:"flex", gap:10 }}>
