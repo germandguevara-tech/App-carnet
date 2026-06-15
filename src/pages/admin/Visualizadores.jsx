@@ -4,6 +4,13 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } 
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 
+function generarEmail(usuario) {
+  return usuario.trim().toLowerCase()
+    .replace(/\s+/g, "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "") + "@app-carnet.com";
+}
+
 const ESTADOS_OPCIONES = [
   { id:"pendiente", label:"Pendiente" },
   { id:"habilitado", label:"Habilitado" },
@@ -119,7 +126,7 @@ function ModalEditar({ viz, torneos, onClose }) {
           <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>✏️ Editar visualizador</div>
           <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
         </div>
-        <div style={{ fontSize:13, color:"#4a6070", marginBottom:"1rem" }}>{viz.email}</div>
+        <div style={{ fontSize:13, color:"#4a6070", marginBottom:"1rem" }}>{viz.usuario || viz.email}</div>
 
         <div style={{ marginBottom:"1rem" }}>
           <label style={s.label}>Torneo asignado</label>
@@ -153,7 +160,7 @@ export default function Visualizadores() {
   const [visualizadores, setVisualizadores] = useState([]);
   const [torneos, setTorneos] = useState([]);
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [form, setForm] = useState({ email:"", password:"", torneoId:"", estadosVisibles:[], verCarnets:false });
+  const [form, setForm] = useState({ usuario:"", password:"", torneoId:"", estadosVisibles:[], verCarnets:false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [modalEditar, setModalEditar] = useState(null);
@@ -179,14 +186,16 @@ export default function Visualizadores() {
   }
 
   async function crearVisualizador() {
-    if (!form.email || !form.password || !form.torneoId) { setError("Completá email, contraseña y torneo"); return; }
+    if (!form.usuario || !form.password || !form.torneoId) { setError("Completá usuario, contraseña y torneo"); return; }
     setLoading(true); setError("");
     try {
-      const existe = await getDocs(query(collection(db, "Usuarios"), where("email", "==", form.email)));
+      const existe = await getDocs(query(collection(db, "Usuarios"), where("usuario", "==", form.usuario)));
       if (!existe.empty) { setError("El nombre de usuario ya está en uso. Elegí otro."); setLoading(false); return; }
-      const cred = await createUserWithEmailAndPassword(authSecondary, form.email, form.password);
+      const email = generarEmail(form.usuario);
+      const cred = await createUserWithEmailAndPassword(authSecondary, email, form.password);
       await addDoc(collection(db, "Usuarios"), {
-        email: form.email,
+        usuario: form.usuario,
+        email,
         Rol: "visualizador",
         rol: "visualizador",
         uid: cred.user.uid,
@@ -194,7 +203,7 @@ export default function Visualizadores() {
         estadosVisibles: form.estadosVisibles,
         verCarnets: form.verCarnets,
       });
-      setForm({ email:"", password:"", torneoId:"", estadosVisibles:[], verCarnets:false });
+      setForm({ usuario:"", password:"", torneoId:"", estadosVisibles:[], verCarnets:false });
       setMostrarForm(false);
       await cargarDatos();
     } catch(err) { setError("Error: " + err.message); }
@@ -222,8 +231,8 @@ export default function Visualizadores() {
         <div style={s.card}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
             <div>
-              <label style={s.label}>Email</label>
-              <input type="email" style={s.input} value={form.email} onChange={e => setForm({...form, email:e.target.value})} placeholder="email@ejemplo.com" />
+              <label style={s.label}>Usuario</label>
+              <input type="text" style={s.input} value={form.usuario} onChange={e => setForm({...form, usuario:e.target.value})} placeholder="ej: vista2026" />
             </div>
             <div>
               <label style={s.label}>Contraseña</label>
@@ -273,7 +282,7 @@ export default function Visualizadores() {
             )}
             {visualizadores.map(v => (
               <tr key={v.docId}>
-                <td style={s.td}>{v.email}</td>
+                <td style={s.td}>{v.usuario || v.email}</td>
                 <td style={s.td}>{getNombreTorneo(v.torneoId)}</td>
                 <td style={s.td}>
                   <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
