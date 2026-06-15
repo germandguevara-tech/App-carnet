@@ -69,6 +69,7 @@ export default function Inscriptos() {
   useEffect(() => { cargarFiltros(); }, []);
   useEffect(() => { if(torneoFiltro) { setPagina(1); cargarJugadores(); } }, [torneoFiltro, clubFiltro, estadoFiltro, orden, categoriaFiltro]);
   useEffect(() => { setSeleccionados([]); }, [torneoFiltro, clubFiltro, estadoFiltro, categoriaFiltro]);
+  useEffect(() => { setClubFiltro(""); }, [torneoFiltro]);
 
   async function cargarFiltros() {
     const snapT = await getDocs(collection(db, "torneos_carnet"));
@@ -246,6 +247,8 @@ export default function Inscriptos() {
     </select>
   );
 
+  const clubesDelTorneo = torneoFiltro ? clubes.filter(c => c.torneoId === torneoFiltro) : clubes;
+
   return (
     <div style={{ overflow:"hidden" }}>
       {/* Header */}
@@ -283,7 +286,7 @@ export default function Inscriptos() {
           </div>
           <select style={s.select} value={clubFiltro} onChange={e => setClubFiltro(e.target.value)}>
             <option value="">Todos los clubes</option>
-            {clubes.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
+            {clubesDelTorneo.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
           </select>
           {selectEstado}
           <select style={s.select} value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)}>
@@ -302,7 +305,7 @@ export default function Inscriptos() {
           </select>
           <select style={{ ...s.select, flex:1, minWidth:120 }} value={clubFiltro} onChange={e => setClubFiltro(e.target.value)}>
             <option value="">Todos los clubes</option>
-            {clubes.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
+            {clubesDelTorneo.map(c => <option key={c.id} value={c.uid}>{c.nombre}</option>)}
           </select>
           <select style={{ ...s.select, flex:1, minWidth:110 }} value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
             <option value="">Todos</option>
