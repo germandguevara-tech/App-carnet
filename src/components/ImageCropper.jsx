@@ -219,8 +219,24 @@ export default function ImageCropper({ imageSrc, mode, onSave, onCancel }) {
   }
 
   function handleSave() {
-    if (!canvasRef.current) return;
-    onSave(canvasRef.current.toDataURL("image/jpeg", 0.92));
+    if (!canvasRef.current || !imgElRef.current) return;
+    const { w: cw, h: ch } = cvsSize.current;
+    const { w: iw, h: ih } = imgSize.current;
+    const { cx, cy, scale, rot } = T.current;
+
+    const escala = 3;
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width  = cw * escala;
+    exportCanvas.height = ch * escala;
+    const ctx = exportCanvas.getContext("2d");
+
+    ctx.scale(escala, escala);
+    ctx.translate(cx, cy);
+    ctx.rotate(rot * Math.PI / 2);
+    ctx.scale(scale, scale);
+    ctx.drawImage(imgElRef.current, -iw / 2, -ih / 2, iw, ih);
+
+    onSave(exportCanvas.toDataURL("image/jpeg", 1.0));
   }
 
   // ── render ─────────────────────────────────────────────────────────────────
