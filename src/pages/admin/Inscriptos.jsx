@@ -348,7 +348,7 @@ export default function Inscriptos() {
               key={j.id}
               onClick={() => setJugadorSeleccionado(j)}
               style={{
-                background: fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white",
+                background: fueraCategoriaIds.includes(j.id) ? "rgba(245, 158, 11, 0.18)" : "white",
                 borderRadius: 10,
                 border: "1px solid #ede5d5",
                 padding: "12px",
@@ -420,9 +420,9 @@ export default function Inscriptos() {
               {loading && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>Cargando...</td></tr>}
               {!loading && jugadores.length === 0 && <tr><td colSpan={9} style={{ ...s.td, textAlign:"center", color:"#8a9eaa", padding:"2rem" }}>No hay jugadores.</td></tr>}
               {jugadoresPaginados.map(j => (
-                <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer", background: fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white" }}
+                <tr key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{ cursor:"pointer", background: fueraCategoriaIds.includes(j.id) ? "rgba(245, 158, 11, 0.18)" : "white" }}
                   onMouseEnter={e => e.currentTarget.style.background="#f9f7f4"}
-                  onMouseLeave={e => e.currentTarget.style.background=fueraCategoriaIds.includes(j.id) ? "rgba(220,53,69,0.12)" : "white"}>
+                  onMouseLeave={e => e.currentTarget.style.background=fueraCategoriaIds.includes(j.id) ? "rgba(245, 158, 11, 0.18)" : "white"}>
                   <td style={{ ...s.td, textAlign:"center" }} onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccion(j.id)} />
                   </td>
