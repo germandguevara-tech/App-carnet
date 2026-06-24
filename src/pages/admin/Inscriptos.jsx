@@ -252,6 +252,11 @@ export default function Inscriptos() {
   );
 
   const clubesDelTorneo = torneoFiltro ? clubes.filter(c => c.torneoId === torneoFiltro) : clubes;
+  const torneoActual = torneos.find(t => t.id === torneoFiltro);
+  const categoriasDelTorneo = (torneoActual?.categorias || [])
+    .map(tc => todasCategorias.find(c => c.id === (typeof tc === "string" ? tc : tc.id)))
+    .filter(Boolean)
+    .map(c => c.nombre);
 
   return (
     <div style={{ overflow:"hidden" }}>
@@ -559,7 +564,7 @@ export default function Inscriptos() {
                       <select style={{ width:"100%", padding:"7px 10px", border:"1.5px solid #ede5d5", borderRadius:8, fontSize:13, outline:"none", background:"white" }}
                         value={datosEdit.categoria || ""} onChange={e => setDatosEdit({...datosEdit, categoria: e.target.value})}>
                         <option value="">— Seleccioná —</option>
-                        {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                        {categoriasDelTorneo.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <button onClick={guardarEdicion} style={{ background:"#1e3a4a", color:"white", border:"none", borderRadius:8, padding:"8px 16px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
