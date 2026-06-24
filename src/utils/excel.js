@@ -2,8 +2,7 @@ import * as XLSX from "xlsx";
 
 export function descargarExcel(jugadores, nombreArchivo) {
   const datos = jugadores.map(j => ({
-    "Apellido": j.apellido || "",
-    "Nombre": j.nombre || "",
+    "Apellido y Nombre": `${j.apellido || ""} ${j.nombre || ""}`.trim().toUpperCase(),
     "DNI": j.dni || "",
     "Fecha Nacimiento": j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "",
     "Categoría": j.categoria || "",
@@ -24,7 +23,7 @@ export function descargarExcel(jugadores, nombreArchivo) {
   XLSX.utils.book_append_sheet(wb, ws, "Inscriptos");
 
   const colWidths = [
-    { wch:20 }, { wch:20 }, { wch:12 }, { wch:16 },
+    { wch:30 }, { wch:12 }, { wch:16 },
     { wch:12 }, { wch:25 }, { wch:25 }, { wch:14 },
     { wch:16 }, { wch:60 }, { wch:60 }, { wch:60 },
     { wch:50 }, { wch:50 }, { wch:50 }

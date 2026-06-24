@@ -6,3 +6,8 @@ export function normalizarTexto(texto) {
     .trim()
     .replace(/\s+/g, " ");
 }
+
+export function normalizarDNI(dni) {
+  if (!dni) return "";
+  return dni.replace(/\./g, "").replace(/\s/g, "").trim();
+}

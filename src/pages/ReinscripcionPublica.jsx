@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, getDoc, query, where, updateDoc } from "firebase/firestore";
 import { subirFotoADrive, generarNombreCarnet, generarNombreDniFrente, generarNombreDniDorso } from "../utils/drive";
-import { normalizarTexto } from "../utils/texto";
+import { normalizarTexto, normalizarDNI } from "../utils/texto";
 import { useParams } from "react-router-dom";
 import ImageCropper from "../components/ImageCropper";
 
@@ -228,7 +228,7 @@ export default function ReinscripcionPublica() {
       const ocrPriority = ocrFrente || ocrDorso;
       const resultado = combinarDatos([mrzPriority, ocrPriority]);
       if (resultado.apellido || resultado.nombre || resultado.dni) {
-        setDatos(prev => ({ ...prev, ...resultado, apellido: normalizarTexto(resultado.apellido), nombre: normalizarTexto(resultado.nombre) }));
+        setDatos(prev => ({ ...prev, ...resultado, apellido: normalizarTexto(resultado.apellido), nombre: normalizarTexto(resultado.nombre), dni: normalizarDNI(resultado.dni) }));
       }
     } catch(e) { console.log("Error:", e.message); }
     setProcesando(false); setPaso(2);
@@ -241,24 +241,25 @@ export default function ReinscripcionPublica() {
     try {
       const apellido = normalizarTexto(datos.apellido);
       const nombre = normalizarTexto(datos.nombre);
+      const dni = normalizarDNI(datos.dni);
       const torneoNombre = torneoData?.nombre || "Torneo";
       const clubNombre = clubData?.nombre || "Club";
       let urlCarnet = "", urlDniFrente = "", urlDniDorso = "";
 
       setProgreso("Subiendo foto carnet...");
-      if (fotoCarnet) { const r = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:generarNombreCarnet(apellido, nombre, datos.categoria, datos.dni), torneoNombre, clubNombre }); urlCarnet = r.url; }
+      if (fotoCarnet) { const r = await subirFotoADrive({ archivo:fotoCarnet, nombreArchivo:generarNombreCarnet(apellido, nombre, datos.categoria, dni), torneoNombre, clubNombre }); urlCarnet = r.url; }
 
       setProgreso("Subiendo foto DNI frente...");
-      if (fotoFrente) { const r = await subirFotoADrive({ archivo:fotoFrente, nombreArchivo:generarNombreDniFrente(apellido, nombre, datos.dni), torneoNombre, clubNombre }); urlDniFrente = r.url; }
+      if (fotoFrente) { const r = await subirFotoADrive({ archivo:fotoFrente, nombreArchivo:generarNombreDniFrente(apellido, nombre, dni), torneoNombre, clubNombre }); urlDniFrente = r.url; }
 
       setProgreso("Subiendo foto DNI dorso...");
-      if (fotoDorso) { const r = await subirFotoADrive({ archivo:fotoDorso, nombreArchivo:generarNombreDniDorso(apellido, nombre, datos.dni), torneoNombre, clubNombre }); urlDniDorso = r.url; }
+      if (fotoDorso) { const r = await subirFotoADrive({ archivo:fotoDorso, nombreArchivo:generarNombreDniDorso(apellido, nombre, dni), torneoNombre, clubNombre }); urlDniDorso = r.url; }
 
       setProgreso("Guardando...");
       await updateDoc(doc(db, "jugadores_carnet", jugadorId), {
         apellido,
         nombre,
-        dni: datos.dni,
+        dni,
         fechaNacimiento: datos.fechaNacimiento,
         categoria: datos.categoria,
         estado: "pendiente",

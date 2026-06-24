@@ -3,7 +3,7 @@ import { db } from "../../firebase";
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
 import { descargarExcel } from "../../utils/excel";
-import { normalizarTexto } from "../../utils/texto";
+import { normalizarTexto, normalizarDNI } from "../../utils/texto";
 import ModalReporte from "./ModalReporte";
 
 const s = {
@@ -179,15 +179,16 @@ export default function Inscriptos() {
   async function guardarEdicion() {
     const apellido = normalizarTexto(datosEdit.apellido);
     const nombre = normalizarTexto(datosEdit.nombre);
+    const dni = normalizarDNI(datosEdit.dni);
     await updateDoc(doc(db, "jugadores_carnet", jugadorSeleccionado.id), {
       apellido,
       nombre,
-      dni: datosEdit.dni,
+      dni,
       fechaNacimiento: datosEdit.fechaNacimiento,
       categoria: datosEdit.categoria,
     });
     setEditando(false);
-    setJugadorSeleccionado(prev => ({ ...prev, ...datosEdit, apellido, nombre }));
+    setJugadorSeleccionado(prev => ({ ...prev, ...datosEdit, apellido, nombre, dni }));
     await cargarJugadores();
   }
 
