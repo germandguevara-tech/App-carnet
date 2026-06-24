@@ -82,7 +82,7 @@ export function generarReporteHTML({ jugadores, clubes, torneoNombre, temporada,
       </td>`;
       return `<tr>
         <td style="text-align:center;color:#8a9eaa">${i + 1}</td>
-        <td><strong>${j.apellido || ""}</strong>, ${j.nombre || ""}</td>
+        <td style="text-transform:uppercase"><strong>${j.apellido || ""}</strong>, ${j.nombre || ""}</td>
         <td>${j.dni || "—"}</td>
         <td>${formatFecha(j.fechaNacimiento)}</td>
         ${clubCell}

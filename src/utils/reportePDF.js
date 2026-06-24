@@ -179,10 +179,12 @@ export async function generarPDF({ jugadores, clubes, torneoNombre, temporada, c
       ? ["N°", "Apellido y Nombre", "DNI", "Fecha Nac.", "Estado"]
       : ["N°", "Apellido y Nombre", "DNI", "Fecha Nac.", "Club", "Estado"];
 
-    const rows = jsCat.map((j, i) => esPorClub
-      ? [i + 1, `${j.apellido || ""}, ${j.nombre || ""}`, j.dni || "—", formatFecha(j.fechaNacimiento), estadoLabel(j.estado)]
-      : [i + 1, `${j.apellido || ""}, ${j.nombre || ""}`, j.dni || "—", formatFecha(j.fechaNacimiento), getNombreClub(j.clubId), estadoLabel(j.estado)]
-    );
+    const rows = jsCat.map((j, i) => {
+      const nombreCompleto = `${j.apellido || ""}, ${j.nombre || ""}`.toUpperCase();
+      return esPorClub
+        ? [i + 1, nombreCompleto, j.dni || "—", formatFecha(j.fechaNacimiento), estadoLabel(j.estado)]
+        : [i + 1, nombreCompleto, j.dni || "—", formatFecha(j.fechaNacimiento), getNombreClub(j.clubId), estadoLabel(j.estado)];
+    });
 
     let startY;
     if (prevFinalY === null) {

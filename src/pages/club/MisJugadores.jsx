@@ -123,7 +123,7 @@ export default function MisJugadores({ userData, clubData, onVolver, onReinscrib
                 {j.fotoCarnetUrl ? <img src={urlVisualizacion(j.fotoCarnetUrl)} alt="carnet" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:20 }}>👤</span>}
               </div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:15, fontWeight:600, color:"#1e3a4a" }}>{j.apellido}, {j.nombre}</div>
+                <div style={{ fontSize:15, fontWeight:600, color:"#1e3a4a", textTransform:"uppercase" }}>{j.apellido}, {j.nombre}</div>
                 <div style={{ fontSize:12, color:"#8a9eaa", marginTop:2 }}>DNI: {j.dni} · Nac: {j.fechaNacimiento ? j.fechaNacimiento.split("-").reverse().join("/") : "—"}</div>
                 <div style={{ fontSize:12, color:"#4a6070", marginTop:2 }}>Categoría: {j.categoria || "—"}</div>
                 {j.motivoRechazo && (

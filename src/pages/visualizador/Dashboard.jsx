@@ -171,7 +171,7 @@ export default function VisualizadorDashboard() {
                   }
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:14, fontWeight:600, color:"#1e3a4a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                  <div style={{ fontSize:14, fontWeight:600, color:"#1e3a4a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textTransform:"uppercase" }}>
                     {j.apellido}, {j.nombre}
                   </div>
                   <div style={{ fontSize:12, color:"#8a9eaa", marginTop:2 }}>DNI {j.dni} · {j.categoria}</div>
@@ -225,7 +225,7 @@ function ModalJugador({ jugador, clubNombre, onClose }) {
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:1000 }}>
       <div style={{ background:"white", borderRadius:"20px 20px 0 0", width:"100%", maxWidth:520, maxHeight:"92vh", overflowY:"auto" }}>
         <div style={{ position:"sticky", top:0, background:"white", padding:"1rem 1.25rem", borderBottom:"1px solid #ede5d5", display:"flex", alignItems:"center", justifyContent:"space-between", borderRadius:"20px 20px 0 0" }}>
-          <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>
+          <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a", textTransform:"uppercase" }}>
             {jugador.apellido}, {jugador.nombre}
           </div>
           <button onClick={onClose} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", color:"#8a9eaa", lineHeight:1 }}>×</button>

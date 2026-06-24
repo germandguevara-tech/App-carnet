@@ -3,6 +3,7 @@ import { db } from "../../firebase";
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { urlVisualizacion } from "../../utils/drive";
 import { descargarExcel } from "../../utils/excel";
+import { normalizarTexto } from "../../utils/texto";
 import ModalReporte from "./ModalReporte";
 
 const s = {
@@ -176,15 +177,17 @@ export default function Inscriptos() {
   }
 
   async function guardarEdicion() {
+    const apellido = normalizarTexto(datosEdit.apellido);
+    const nombre = normalizarTexto(datosEdit.nombre);
     await updateDoc(doc(db, "jugadores_carnet", jugadorSeleccionado.id), {
-      apellido: datosEdit.apellido,
-      nombre: datosEdit.nombre,
+      apellido,
+      nombre,
       dni: datosEdit.dni,
       fechaNacimiento: datosEdit.fechaNacimiento,
       categoria: datosEdit.categoria,
     });
     setEditando(false);
-    setJugadorSeleccionado(prev => ({ ...prev, ...datosEdit }));
+    setJugadorSeleccionado(prev => ({ ...prev, ...datosEdit, apellido, nombre }));
     await cargarJugadores();
   }
 
@@ -353,7 +356,7 @@ export default function Inscriptos() {
                     ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     : <span style={{ fontSize:14 }}>👤</span>}
                 </div>
-                <div style={{ flex:1, fontWeight:600, fontSize:14, color:"#1e3a4a", minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                <div style={{ flex:1, fontWeight:600, fontSize:14, color:"#1e3a4a", minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textTransform:"uppercase" }}>
                   {duplicados.includes(j.dni) && (
                     <span title={`También en: ${(duplicadosInfo[j.dni]||[]).filter(cid=>cid!==j.clubId).map(cid=>getNombreClub(cid)).join(", ")}`} style={{ color:"#c0392b", marginRight:4, cursor:"help" }}>⚠️</span>
                   )}
@@ -422,7 +425,7 @@ export default function Inscriptos() {
                       {j.fotoCarnetUrl ? <img src={urlVisualizacion(j.fotoCarnetUrl)} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:14 }}>👤</span>}
                     </div>
                   </td>
-                  <td style={{ ...s.td, fontWeight:600, wordBreak:"break-word" }}>
+                  <td style={{ ...s.td, fontWeight:600, wordBreak:"break-word", textTransform:"uppercase" }}>
                     {duplicados.includes(j.dni) && (
                       <span
                         title={`También en: ${(duplicadosInfo[j.dni] || []).filter(cid => cid !== j.clubId).map(cid => getNombreClub(cid)).join(", ")}`}
@@ -475,7 +478,7 @@ export default function Inscriptos() {
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:"1rem" }}>
           <div style={{ background:"white", borderRadius:16, width:"100%", maxWidth:600, maxHeight:"90vh", overflowY:"auto" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"1.25rem 1.5rem", borderBottom:"1px solid #ede5d5" }}>
-              <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a" }}>{jugadorSeleccionado.apellido}, {jugadorSeleccionado.nombre}</div>
+              <div style={{ fontSize:16, fontWeight:600, color:"#1e3a4a", textTransform:"uppercase" }}>{jugadorSeleccionado.apellido}, {jugadorSeleccionado.nombre}</div>
               <button onClick={() => { setJugadorSeleccionado(null); setConfirmandoEliminar(false); }} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#8a9eaa" }}>×</button>
             </div>
 
@@ -523,7 +526,7 @@ export default function Inscriptos() {
                     ].map(d => (
                       <div key={d.label} style={{ display:"flex", gap:8, fontSize:13 }}>
                         <span style={{ color:"#8a9eaa", width:80 }}>{d.label}</span>
-                        <span style={{ fontWeight:600, color:"#1e3a4a" }}>{d.val}</span>
+                        <span style={{ fontWeight:600, color:"#1e3a4a", textTransform: ["Apellido","Nombre"].includes(d.label) ? "uppercase" : "none" }}>{d.val}</span>
                       </div>
                     ))}
                     {jugadorSeleccionado.motivoRechazo && (
@@ -629,7 +632,7 @@ export default function Inscriptos() {
               ) : (
                 <div style={{ background:"#fdecea", borderRadius:10, padding:"14px 16px" }}>
                   <div style={{ fontSize:13, color:"#c0392b", fontWeight:600, marginBottom:4 }}>
-                    ¿Eliminar a {jugadorSeleccionado.apellido} {jugadorSeleccionado.nombre}?
+                    ¿Eliminar a <span style={{ textTransform:"uppercase" }}>{jugadorSeleccionado.apellido} {jugadorSeleccionado.nombre}</span>?
                   </div>
                   <div style={{ fontSize:12, color:"#c0392b", marginBottom:12 }}>
                     Esta acción no se puede deshacer.
